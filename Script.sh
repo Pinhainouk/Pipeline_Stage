@@ -1,21 +1,29 @@
 #!/bin/bash -i
 
-while getopts "o:s:" opt
+while getopts "o:s:r:n:i:f:" opt
 do
   case "$opt" in
     o) path=${OPTARG};;
     s) sample=${OPTARG};;
+    r) refgenome=${OPTARG};;
+    n) snp=${OPTARG};;
+    i) indel=${OPTARG};;
+    f) funcotatordata=${OPTARG};;
   esac
 done
 
-if [ -z "$path" ] || [ -z "$sample" ]; then
-  echo "Usage: $0 -o path -s sample"
+if [ -z "${path}" ] || [ -z "${sample}" ] || [ -z "${refgenome}" ] || [ -z "${snp}" ] || [ -z "${indel}" ] || [ -z "${funcotatordata}" ]; then
+  echo "Usage: $0 -o path -s sample -r refgenome -n snp -i indel -f funcotatordata"
   echo "La commande $opt nécessite une option"
   exit 1
 fi
 echo "options fournies:"
-echo "path : $path"
-echo "sample : $sample"
+echo "path : ${path}"
+echo "sample : ${sample}"
+echo "refgenome : ${refgenome}"
+echo "snp : ${snp}"
+echo "indel : ${indel}"
+echo "funcotatordata : ${funcotatordata}"
 
 #shopt -s expand_aliases - non utilisé car utlilsation dans le head du -i pour les alias
 #source ~/.bashrc - non utilisé
@@ -35,7 +43,9 @@ echo "sample : $sample"
 #if [ ! -d "$directory" ]; then
 #  echo "Les dossiers n'existent pas"
   #-p indique au mkdir pour créer d'abord le répertoire principal s'il n'existe pas déjà
-  mkdir -p "${path}/{QC_Raw,Trimming,QC_Trimming,Alignment,QC_Alignment,Analysis}"
+for dir in "QC_Raw" "Trimming" "QC_Trimming" "Alignment" "QC_Alignment" "Analysis"; do
+  mkdir -p "${path}/${dir}"
+done
 #  echo "$directory"
 #else
 #  echo "Les dossiers ont déjà été créés"
@@ -45,7 +55,7 @@ echo "sample : $sample"
 #conda activate gatk
 
 end=".fastq.gz"
-R1_raw="$path/Raw/${sample}_1${end}"
+R1_raw="${path}/Raw/${sample}_1${end}"
 R2_raw="${path}/Raw/${sample}_2${end}"
 log_qc_raw="${path}/Raw/${sample}_log_qc_raw"
 R1_trim="${path}/Trimming/${sample}_1_trimming${end}"
@@ -66,9 +76,9 @@ flagstat_rmduplicates="${path}/QC_Alignment/${sample}_aln_mem_sort_rmduplicates_
 idxstats_rmduplicates="${path}/QC_Alignment/${sample}_aln_mem_sort_rmduplicates_idxstats"
 stats_rmduplicates="${path}/QC_Alignment/${sample}_aln_mem_sort_rmduplicates_stats"
 read_groups="${path}/Alignment/${sample}_aln_mem_sort_rmduplicates_read_groups.bam"
-vcf_indel="${path}/Genome/Mills_and_1000G_gold_standard.indels.hg19.sites.vcf"
-vcf_snp="${path}/Genome/dbsnp_138.hg19.vcf"
-reference="${path}/Genome/hg19.p13.plusMT.no_alt_analysis_set.fa.gz"
+vcf_indel="${indel}"
+vcf_snp="${snp}"
+reference="${refgenome}"
 before_base_recalibrator="${path}/Alignment/${sample}_before_bqsr.report"
 apply_bqsr="${path}/Alignment/${sample}_aln_mem_sort_rmduplicates_apply_bqsr.bam"
 after_base_recalibrator="${path}/Alignment/${sample}_after_bqsr.report"
@@ -303,7 +313,7 @@ fi
 ################################################################################
 if  [ ! -f "$vcf_funcotated" ];then
   echo "Les fichiers vcf_funcotated n'existent pas"
-gatk Funcotator --variant $vcf_normalized --reference $reference --ref-version hg19 --data-sources-path $path/Analysis/funcotator_dataSources.v1.4.20180615/gencode \
+gatk Funcotator --variant $vcf_normalized --reference $reference --ref-version hg19 --data-sources-path $funcotatordata/gencode \
 --output $vcf_funcotated --output-file-format VCF
 else
   echo "Les fichiers vcf_funcotated existent déjà"
