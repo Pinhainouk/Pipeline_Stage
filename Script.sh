@@ -1,4 +1,22 @@
 #!/bin/bash -i
+
+while getopts "o:s:" opt
+do
+  case "$opt" in
+    o) path=${OPTARG};;
+    s) sample=${OPTARG};;
+  esac
+done
+
+if [ -z "$path" ] || [ -z "$sample" ]; then
+  echo "Usage: $0 -o path -s sample"
+  echo "La commande $opt nécessite une option"
+  exit 1
+fi
+echo "options fournies:"
+echo "path : $path"
+echo "sample : $sample"
+
 #shopt -s expand_aliases - non utilisé car utlilsation dans le head du -i pour les alias
 #source ~/.bashrc - non utilisé
 
@@ -17,58 +35,52 @@
 #if [ ! -d "$directory" ]; then
 #  echo "Les dossiers n'existent pas"
   #-p indique au mkdir pour créer d'abord le répertoire principal s'il n'existe pas déjà
-  mkdir -p /home/elodie/Documents/{QC_Raw,Trimming,QC_Trimming,Alignment,QC_Alignment,Analysis}
+  mkdir -p "${path}/{QC_Raw,Trimming,QC_Trimming,Alignment,QC_Alignment,Analysis}"
 #  echo "$directory"
 #else
 #  echo "Les dossiers ont déjà été créés"
 #fi
 #done
 #activation de l'environnement GATK
-conda activate gatk
+#conda activate gatk
 
-list="gold_12x_on_data_elodie gold_24x_on_data_elodie gold_40x_on_data_elodie"
-
-for element in $list
-  do
-
-path="/home/elodie/Documents"
 end=".fastq.gz"
-R1_raw="${path}/Raw/${element}_1${end}"
-R2_raw="${path}/Raw/${element}_2${end}"
-log_qc_raw="${path}/Raw/${element}_log_qc_raw"
-R1_trim="${path}/Trimming/${element}_1_trimming${end}"
-R2_trim="${path}/Trimming/${element}_2_trimming${end}"
-stats_trim="${path}/Trimming/${element}_trimming_stats"
-log_trim="${path}/Trimming/${element}_log_trim"
-log_qc_trim="${path}/Trimming/${element}_log_qc_trim"
-aln_mem="${path}/Alignment/${element}_aln_mem.sam"
-log_alignment="${path}/QC_Alignment/${element}_aln_log"
-aln_mem_sort="${path}/Alignment/${element}_aln_mem_sort.bam"
-flagstat="${path}/QC_Alignment/${element}_aln_mem_sort_flagstat"
-idxstats="${path}/QC_Alignment/${element}_aln_mem_sort_idxstats"
-stats="${path}/QC_Alignment/${element}_aln_mem_sort_stats"
-rmduplicates="${path}/Alignment/${element}_aln_mem_sort_rmduplicates.bam"
-rmduplicates_metrics="${path}/QC_Alignment/${element}_aln_mem_sort_rmduplicates_metrics"
-log_rmduplicates="${path}/QC_Alignment/${element}_aln_mem_sort_rmduplicates_log"
-flagstat_rmduplicates="${path}/QC_Alignment/${element}_aln_mem_sort_rmduplicates_flagstat"
-idxstats_rmduplicates="${path}/QC_Alignment/${element}_aln_mem_sort_rmduplicates_idxstats"
-stats_rmduplicates="${path}/QC_Alignment/${element}_aln_mem_sort_rmduplicates_stats"
-read_groups="${path}/Alignment/${element}_aln_mem_sort_rmduplicates_read_groups.bam"
+R1_raw="$path/Raw/${sample}_1${end}"
+R2_raw="${path}/Raw/${sample}_2${end}"
+log_qc_raw="${path}/Raw/${sample}_log_qc_raw"
+R1_trim="${path}/Trimming/${sample}_1_trimming${end}"
+R2_trim="${path}/Trimming/${sample}_2_trimming${end}"
+stats_trim="${path}/Trimming/${sample}_trimming_stats"
+log_trim="${path}/Trimming/${sample}_log_trim"
+log_qc_trim="${path}/Trimming/${sample}_log_qc_trim"
+aln_mem="${path}/Alignment/${sample}_aln_mem.sam"
+log_alignment="${path}/QC_Alignment/${sample}_aln_log"
+aln_mem_sort="${path}/Alignment/${sample}_aln_mem_sort.bam"
+flagstat="${path}/QC_Alignment/${sample}_aln_mem_sort_flagstat"
+idxstats="${path}/QC_Alignment/${sample}_aln_mem_sort_idxstats"
+stats="${path}/QC_Alignment/${sample}_aln_mem_sort_stats"
+rmduplicates="${path}/Alignment/${sample}_aln_mem_sort_rmduplicates.bam"
+rmduplicates_metrics="${path}/QC_Alignment/${sample}_aln_mem_sort_rmduplicates_metrics"
+log_rmduplicates="${path}/QC_Alignment/${sample}_aln_mem_sort_rmduplicates_log"
+flagstat_rmduplicates="${path}/QC_Alignment/${sample}_aln_mem_sort_rmduplicates_flagstat"
+idxstats_rmduplicates="${path}/QC_Alignment/${sample}_aln_mem_sort_rmduplicates_idxstats"
+stats_rmduplicates="${path}/QC_Alignment/${sample}_aln_mem_sort_rmduplicates_stats"
+read_groups="${path}/Alignment/${sample}_aln_mem_sort_rmduplicates_read_groups.bam"
 vcf_indel="${path}/Genome/Mills_and_1000G_gold_standard.indels.hg19.sites.vcf"
 vcf_snp="${path}/Genome/dbsnp_138.hg19.vcf"
 reference="${path}/Genome/hg19.p13.plusMT.no_alt_analysis_set.fa.gz"
-before_base_recalibrator="${path}/Alignment/${element}_before_bqsr.report"
-apply_bqsr="${path}/Alignment/${element}_aln_mem_sort_rmduplicates_apply_bqsr.bam"
-after_base_recalibrator="${path}/Alignment/${element}_after_bqsr.report"
-before_after_bqsr_plot="${path}/Alignment/${element}_analyze_covariates_plot.pdf"
-vcf="${path}/Analysis/${element}.vcf.gz"
-bamout="${path}/Alignment/${element}_bamout.bam"
+before_base_recalibrator="${path}/Alignment/${sample}_before_bqsr.report"
+apply_bqsr="${path}/Alignment/${sample}_aln_mem_sort_rmduplicates_apply_bqsr.bam"
+after_base_recalibrator="${path}/Alignment/${sample}_after_bqsr.report"
+before_after_bqsr_plot="${path}/Alignment/${sample}_analyze_covariates_plot.pdf"
+vcf="${path}/Analysis/${sample}.vcf.gz"
+bamout="${path}/Alignment/${sample}_bamout.bam"
 bed="${path}/Elodie/01_data_elodie_V2.bed"
-vcf_cnnscorevariants="${path}/Analysis/${element}_cnnscorevariants_2D.vcf.gz"
-vcf_filtervarianttranches="${path}/Analysis/${element}_filtervarianttranches_2D.vcf"
-vcf_decomposed="${path}/Analysis/${element}_filtervarianttranches_2D_decomposed.vcf"
-vcf_normalized="${path}/Analysis/${element}_filtervarianttranches_2D_decomposed_normalized.vcf"
-vcf_funcotated="${path}/Analysis/${element}_filtervarianttranches_2D_decomposed_normalized_funcotated.vcf"
+vcf_cnnscorevariants="${path}/Analysis/${sample}_cnnscorevariants_2D.vcf.gz"
+vcf_filtervarianttranches="${path}/Analysis/${sample}_filtervarianttranches_2D.vcf"
+vcf_decomposed="${path}/Analysis/${sample}_filtervarianttranches_2D_decomposed.vcf"
+vcf_normalized="${path}/Analysis/${sample}_filtervarianttranches_2D_decomposed_normalized.vcf"
+vcf_funcotated="${path}/Analysis/${sample}_filtervarianttranches_2D_decomposed_normalized_funcotated.vcf"
 
 echo $R1_raw
 echo $R2_raw
@@ -80,7 +92,7 @@ echo $R2_trim
 ################################################################################
 # condition si fichier de sortie non trouvé alors on exécute la commande
 
-if [ ! -f "${path}/QC_Raw/${element}_1_fastqc.html" ] && [ ! -f "${path}/QC_Raw/${element}_2_fastqc.html" ];then
+if [ ! -f "${path}/QC_Raw/${sample}_1_fastqc.html" ] && [ ! -f "${path}/QC_Raw/${sample}_2_fastqc.html" ];then
   echo "Les fichiers fastqc n'existent pas";
   fastqc $R1_raw $R2_raw -o /home/elodie/Documents/QC_Raw/ 2>&1 | tee -a $log_qc_raw
 else
@@ -102,7 +114,7 @@ fi
   # FASTQC SUR LES RAW_TRIM
 ################################################################################
 
-if [ ! -f "${path}/QC_Trimming/${element}_1_trimming_fastqc.html" ] && [ ! -f "${path}/QC_Trimming/${element}_2_trimming_fastqc.html" ]; then
+if [ ! -f "${path}/QC_Trimming/${sample}_1_trimming_fastqc.html" ] && [ ! -f "${path}/QC_Trimming/${sample}_2_trimming_fastqc.html" ]; then
   echo "Les fichiers fastqc_trim n'existent pas"
   fastqc $R1_trim $R2_trim -o /home/elodie/Documents/QC_Trimming/ 2>&1 | tee -a $log_qc_trim
 else
@@ -202,7 +214,7 @@ fi
 
 if  [ ! -f "$read_groups" ];then
   echo "Les fichiers bam_read_groups n'existent pas"
-java -jar ${path}/Tools/picard.jar AddOrReplaceReadGroups I=$rmduplicates O=$read_groups RGLB=capture RGPL=illumina RGPU=stage RGSM=${element}
+java -jar ${path}/Tools/picard.jar AddOrReplaceReadGroups I=$rmduplicates O=$read_groups RGLB=capture RGPL=illumina RGPU=stage RGSM=${sample}
 else
   echo "Les fichiers bam_read_groups existent déjà"
 fi
@@ -287,7 +299,7 @@ else
 fi
 
 ################################################################################
-#FUNCOTATOR = annotation des variants avec Gencode
+# FUNCOTATOR = annotation des variants avec Gencode
 ################################################################################
 if  [ ! -f "$vcf_funcotated" ];then
   echo "Les fichiers vcf_funcotated n'existent pas"
@@ -296,5 +308,3 @@ gatk Funcotator --variant $vcf_normalized --reference $reference --ref-version h
 else
   echo "Les fichiers vcf_funcotated existent déjà"
 fi
-
-done
