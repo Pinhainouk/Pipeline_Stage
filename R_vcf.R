@@ -4,7 +4,7 @@ vcf_40x = read.table("/home/elodie/Documents/Analysis/gold_40x_on_data_elodie_fi
 vcf_ref = read.table("/home/elodie/Documents/Elodie/Datas_ismael_ref/gold_on_data_elodie_ismael_decomposed_normalize.vcf.gz")
 
 #Sélection des colonnes 1,2,4,5
-#library('dplyr)
+library('dplyr')
 vcf_12x_select =  vcf_12x %>% select(1,2,4,5)
 vcf_24x_select =  vcf_24x %>% select(1,2,4,5)
 vcf_40x_select =  vcf_40x %>% select(1,2,4,5)
@@ -48,26 +48,95 @@ vcf_merge$vcf_ref <- ifelse(is.na(vcf_merge$vcf_ref), 0, 1)
 #Somme des occurrences des variants dans les vcf
 vcf_merge$Somme <- rowSums(vcf_merge[, c("vcf_12x", "vcf_24x", "vcf_40x", "vcf_ref")])
 
-#library('VennDiagram')
-#library('grid')
-#library('futile.logger')
+library('VennDiagram')
+library('grid')
+library('futile.logger')
 
-ensemble=list(vcf_12x=vcf_12x_concat$Variants, vcf_24x=vcf_24x_concat$Variants, 
-          vcf_40x=vcf_40x_concat$Variants, vcf_ref=vcf_ref_concat$Variants)
-          
-venn.diagram(ensembl, filename = "Venn Diagramme n&b")
+# VennDiagram n&b
+ensemble = list(vcf_12x=vcf_12x_concat$Variants, vcf_24x=vcf_24x_concat$Variants, vcf_40x=vcf_40x_concat$Variants, vcf_ref=vcf_ref_concat$Variants)
+venn.diagram(ensemble, category.names=c("vcf_12x" , "vcf_24x" , "vcf_40x", "vcf_ref"), filename = "Venn diagramme vcf_n&b")
 
-venn.diagram(ensemble, category.names=c("vcf_12x", "vcf_24x", "vcf_40x", "vcf_ref"), filename = "Venn Diagramme couleur", 
+# VennDiagram couleur
+venn.diagram(ensemble, category.names=c("vcf_12x" , "vcf_24x" , "vcf_40x", "vcf_ref"), filename = "Venn diagramme vcf_couleur", 
              fill = c("#999999", "#E69F00", "#56B4E9", "#009E73"))
 
-display_venn = function(x, ...){
+
+# Fonction d'aide pour afficher le diagramme de Venn
+display_venn <- function(x, ...){
   library(VennDiagram)
   grid.newpage()
   venn_object <- venn.diagram(x, filename = NULL, ...)
   grid.draw(venn_object)
 }
-  
-display_venn(ensemble, category.names= c("vcf_12x", "vcf_24x", "vcf_40x", "vcf_ref"), 
+
+display_venn(ensemble)
+
+display_venn(
+  ensemble,
+  category.names = c("vcf_12x" , "vcf_24x" , "vcf_40x", "vcf_ref"),
+  fill = c("#999999", "#E69F00", "#56B4E9", "#009E73"))
+
+ # 01022024
+library ("ggVennDiagram")
+ggVennDiagram(ensemble, label_alpha = 0, filename = "Venn diagramme vcf_gradient")
+
+library("gplots")
+venn.plot = venn.diagram(ensemble, category.names=c("vcf_12x" , "vcf_24x" , "vcf_40x", "vcf_ref"), filename = "Venn diagramme vcf_couleur", 
              fill = c("#999999", "#E69F00", "#56B4E9", "#009E73"))
+venndiag = venn(data=ensemble)
 
+cat_ref = as.data.frame(attributes(venndiag)$intersections$vcf_ref)
+cat_40x = as.data.frame(attributes(venndiag)$intersections$vcf_40x)
+cat_24x = as.data.frame(attributes(venndiag)$intersections$vcf_24x)
+cat_12x = as.data.frame(attributes(venndiag)$intersections$vcf_12x)
+cat_715 = as.data.frame(attributes(venndiag)$intersections$`vcf_12x:vcf_24x:vcf_40x:vcf_ref`)
+cat_24_40_ref = as.data.frame(attributes(venndiag)$intersections$`vcf_24x:vcf_40x:vcf_ref`)
+cat_12_40_ref = as.data.frame(attributes(venndiag)$intersections$`vcf_12x:vcf_40x:vcf_ref`)
+cat_12_24_40 = as.data.frame(attributes(venndiag)$intersections$`vcf_12x:vcf_24x:vcf_40x`)
+cat_40_ref = as.data.frame(attributes(venndiag)$intersections$`vcf_40x:vcf_ref`)
+cat_24_ref = as.data.frame(attributes(venndiag)$intersections$`vcf_24x:vcf_ref`)
+cat_24_40 = as.data.frame(attributes(venndiag)$intersections$`vcf_24x:vcf_40x`)
+cat_12_40 = as.data.frame(attributes(venndiag)$intersections$`vcf_12x:vcf_40x`)
+cat_ref$categorie = c("cat_ref")
+cat_40x$categorie = c("cat_40x")
+cat_24x$categorie = c("cat_24x")
+cat_12x$categorie = c("cat_12x")
+cat_715$categorie = c("cat_715")
+cat_24_40_ref$categorie = c("cat_24_40_ref")
+cat_12_40_ref$categorie = c("cat_12_40_ref")
+cat_12_24_40$categorie = c("cat_12_24_40")
+cat_40_ref$categorie = c("cat_40_ref")
+cat_24_ref$categorie = c("cat_24_ref")
+cat_24_40$categorie = c("cat_24_40")
+cat_12_40$categorie = c("cat_12_40")
 
+list_df = list(cat_ref,cat_40x,cat_24x,cat_12x,cat_715,cat_24_40_ref,cat_12_40_ref,cat_12_24_40,cat_40_ref,cat_24_ref,cat_24_40,cat_12_40)
+newcol=c("Variants","Catégorie")
+new_list = lapply(list_df, setNames, newcol)
+cat=bind_rows(new_list)
+
+cat_split = cat %>% separate(Variants, c("chromosome", "position", "ref", "alt"), "_")
+
+cat_split$type <- ifelse(cat_split$alt == "*", "undetermined",
+                        ifelse (nchar(cat_split$ref)==1 & nchar(cat_split$alt)==1, "SNP",
+                               ifelse(nchar(cat_split$ref) >= 2 & nchar(cat_split$alt) == 1, "délétion",
+                                      ifelse(nchar(cat_split$ref) ==1 & nchar(cat_split$alt)>=2, "insertion", 
+                                             "autre"))))
+cat_split$gene = ifelse(cat_split$chromosome =="chr4", "EPHA5",
+                        ifelse(cat_split$chromosome =="chr1", "UTS2",
+                               ifelse(cat_split$chromosome =="chr8", "LPL", "autre")))
+
+cat_split %>% count(cat_split$type,cat_split$gene)
+cat_split %>% group_by (cat_split$Catégorie) %>% count(cat_split$type)
+
+fig = ggplot(cat_split, aes(x=cat_split$type)) +
+  geom_bar(color="blue", fill=rgb(0.1,0.4,0.5,0.7)
+           )+facet_grid(.~cat_split$gene)+theme_classic()
+
+ggplot(cat_split, aes(x=cat_split$gene)) +
+  geom_bar(color="blue", fill=rgb(0.1,0.4,0.5,0.7))
+
+ggplot(cat_split, aes(x=cat_split$gene, y=)) +
+  geom_bar(color="blue", fill=rgb(0.1,0.4,0.5,0.7))
+
+ggplotly(fig)
