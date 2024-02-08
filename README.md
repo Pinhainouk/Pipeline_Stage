@@ -46,10 +46,14 @@ Ce document détaille les différentes étapes de la réalisation d'un pipeline 
 
 * **Création de l'index du génome hg19: env. 2-3h**
 
-Il s'agit du génome version hg19 sans les chromosomes alternatifs et avec les mitochrondries:
-hg19_genome_index path_hg19.p13.plusMT.no_alt_analysis_set.fa.gz téléchargé sur Genome Browser : https://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/analysisSet/
+Il s'agit du génome version hg19 sans les chromosomes alternatifs et avec les mitochrondries.
+**hg19_genome_index path_hg19.p13.plusMT.no_alt_analysis_set.fa.gz** téléchargé sur Genome Browser (dernière modification 2020-03-09 10:21) : 
+https://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/analysisSet/
+
+**Quand on créé l'index, il est important qu'il ait le même nom que la référence.**
+
 ```
-./bwa index -p hg19_genome_index hg19_genome_file.fa.gz
+./bwa index -p hg19 hg19.fa.gz
 ```
 
 * **Installation de l'environnement conda (v23.11.0) pour l'outil GATK.**
@@ -59,6 +63,10 @@ hg19_genome_index path_hg19.p13.plusMT.no_alt_analysis_set.fa.gz téléchargé s
 vim ~/.bashrc
 ```
 
+**Noms des alias :** 
+
+à ajouter
+
 ## **Guide d'installation et versions des outils :** 
 | Outils | Liens d'installation | Versions
 |----- |----- |-----
@@ -67,14 +75,14 @@ vim ~/.bashrc
 | **BWA**            | https://github.com/lh3/bwa/releases | **v0.7.17-r1188**
 | **Samtools**       | https://sourceforge.net/projects/samtools/files/samtools/1.3.1/ | **v1.3.1**
 | **Picard**         | https://broadinstitute.github.io/Picard/ | **v3.1.1**
-| **GATK**           | https://github.com/broadinstitute/gatk/releases | **v4.5.0.0**
-| **Vt**             | https://genome.sph.umich.edu/wiki/Vt#Installation | **v0.5**
+| **GATK**           | S'assurer d'avoir la version java 17.<BR>Installer GATK : https://github.com/broadinstitute/gatk/releases<BR>Dans le dossier gatk-4.5.0.0, pour créer un environnement GATK avec toutes les dépendances, lancer la commande :<BR>```conda env create -f gatkcondaenv.yml```<BR>Activer l'environnement avec : <BR>```conda activate gatk``` | **v4.5.0.0**
+| **Vt**             | https://genome.sph.umich.edu/wiki/Vt#Installation<BR>Bien suivre l'installation wiki via le git clone pour avoir les options requises.| **v0.5**
 | **Bcftools**       | https://github.com/samtools/bcftools/releases?page=2 | **v1.10.2**
 | **MultiQC**        | https://multiqc.info/docs/getting_started/installation/ | **v1.19**
 
 ## **Problèmes rencontrés :** 
 ### GATK v4.0 
-La nouvelle version 4.5.0.0 de GATK résoud les erreurs suivantes rencontrées à l'exécution de CNNScoreVariants Model 2D avec les versions v4.0 antérieures :
+La nouvelle version 4.5.0.0 de GATK installée dans l'environnement conda résoud les erreurs suivantes rencontrées à l'exécution de CNNScoreVariants Model 2D avec les versions v4.0 antérieures :
 ```
 java.lang.RuntimeException: A required Python package ("gatktool") could not be imported into the Python environment. This tool requires that the GATK Python environment is properly established and activated. Please refer to GATK [README.md](http://readme.md/) file for instructions on setting up the GATK Python environment.
 ```
@@ -97,7 +105,7 @@ options:     input VCF file
 
 Exception en point flottant (core dumped)
 ```
-Paramètres requis à la bonne exécution de Vt normalize :
+Paramètres requis à la bonne exécution de Vt normalize, obtenus en suivant l'installation wiki avec le git clone :
 ```
 normalize v0.5
 
@@ -128,62 +136,92 @@ options : -o  output VCF file [-]
 conda activate gatk
 ```
 
-**S'assurer d'avoir les versions d'outils et les dépendances suivantes :**
+**S'assurer d'avoir les fichiers et dossiers suivants pour le fonctionnement des outils :**
 
-- Le fichier bed : 01_data_elodie_V2.bed
-- La fichier référence du génome version hg19 : hg19.p13.plusMT.no_alt_analysis_set.fa.gz
-- La fichier des adaptateurs pour BBDUK : adapters.fa
-- le fichier vcf avec les SNP connus : dbsnp_138.hg19.vcf
-- le fichier vcf avec les indels connues : Mills_and_1000G_gold_standard.indels.hg19.sites.vcf
-- le dossier package des bases de données Funcotator : funcotator_dataSources.v1.4.20180615
+- Le fichier bed
+- La fichier référence du génome
+- La fichier des adaptateurs pour BBDUK
+- le fichier vcf avec les SNP connus
+- le fichier vcf avec les indels connues
+- le dossier package des bases de données Funcotator
 
 **Deux façons de lancer le script du pipeline :**
 
-* Soit on lance le **Script.sh** avec les **options obligatoires** : 
+* Soit on lance le **Script.sh** avec les **options obligatoires suivantes** : 
 
-        -o : le chemin où vont être rangés les fichiers d'entrée et de sortie du pipeline
-        -s : le nom du ou des échantillons à analyser
-        -r : le chemin complet de la référence du génome
-        -n : le chemin complet du fichier vcf des snp connus
-        -i : le chemin complet du fichier vcf des indels connues
-        -f : le chemin complet du package funcotator contenant les bases de données
+```
+-o : le chemin où vont être rangés les fichiers d'entrée et de sortie du pipeline
+-s : le nom du ou des échantillons à analyser
+-r : le chemin complet de la référence du génome
+-n : le chemin complet du fichier vcf des snp connus
+-i : le chemin complet du fichier vcf des indels connues
+-f : le chemin complet du package funcotator contenant les bases de données
+-a : le chemin complet du fichier contenant les adaptateurs
+-v : saisir la version du génome utilisée (hg19 ou hg38)
+```
+Exemple de lancement :
 
+```
+./Script.sh -o /home/elodie/Documents/ \
+-s gold_12x_on_data_elodie \
+-r /home/elodie/Documents/Genome/hg19.p13.plusMT.no_alt_analysis_set.fa.gz \
+-n /home/elodie/Documents/Genome/dbsnp_138.hg19.vcf \
+-i /home/elodie/Documents/Genome/Mills_and_1000G_gold_standard.indels.hg19.sites.vcf \
+-f /home/elodie/Documents/Analysis/funcotator_dataSources.v1.4.20180615 \
+-a /home/elodie/Documents/Elodie/adapters.fa \
+-v hg19 \
+```
 
-* Soit on lance le **Script_lancement** avec un fichier de config contenant tous les échantillons à analyser.
+* Soit on lance le **Script_lancement.sh** avec un fichier de config contenant tous les échantillons à analyser.
 
 Il boucle alors sur le fichier de config tant qu'une ligne n'est pas vide et il exécute le script sur chaque échantillon.
 
+Exemple de lancement :
+
+```
+./Script_lancement.sh
+```
+
+## **Fichiers de sortie** :
+
+- Fichiers BAM final : après l'étape BQSR
+- Fichiers VCF final : après l'annotation fonctionnelle
+- MultiQC
+
+A revoir
+
 ## **Glossaire :**
-SNP : Single Nucleotide Polymorphism, variation d'une seule paire de base entre individus d'une même espèce
-
-BQSR : Base Quality Score Recalibration
-
-read : fragment de plusieurs bases générés et lu par un séquenceur appelé aussi une lecture, une séquence
-
-NGS : Next Generation Sequencing
+BAM : Binary Alignment Map
 
 BBDuk : DUK pour Decontamination Using Kmers (de la suite d'outils BBTools).
 
-hg19 : human genome GRCh37
+BQSR : Base Quality Score Recalibration
 
 BWA : Burrows-Wheeler Aligner
 
-MEM : Maximal Exact Matches
-
-PCR : Polymerase Chain Reaction
-
 duplicats de PCR : paires de lectures qui ont le même début et la même fin d'alignement.
-
-GATK : Genome Analysis ToolKit
-
-Réseau de neurones convolutionnel : système dont la conception est à l'origine schématiquement inspirée du fonctionnement des neurones biologiques, et qui par la suite s'est rapproché des méthodes statistiques. Lors de l'entraînement, un ensemble de données est utilisé pour permettre au modèle d'apprendre et de reconnaître un objet ou quelque chose en particulier.
-
-fichiers VCF : Variant Call Format
 
 Funcotator : FUNCtional annOTATOR
 
-Vt : Variant Tool
+GATK : Genome Analysis ToolKit
 
+hg19 : human genome GRCh37
+
+MEM : Maximal Exact Matches
+
+NGS : Next Generation Sequencing
+
+PCR : Polymerase Chain Reaction
+
+read : fragment de plusieurs bases générés et lu par un séquenceur appelé aussi une lecture, une séquence
+
+Réseau de neurones convolutionnel : système dont la conception est à l'origine schématiquement inspirée du fonctionnement des neurones biologiques, et qui par la suite s'est rapproché des méthodes statistiques. Lors de l'entraînement, un ensemble de données est utilisé pour permettre au modèle d'apprendre et de reconnaître un objet ou quelque chose en particulier.
+
+SNP : Single Nucleotide Polymorphism, variation d'une seule paire de base entre individus d'une même espèce
+
+VCF : Variant Call Format
+
+Vt : Variant Tool
 
 
 

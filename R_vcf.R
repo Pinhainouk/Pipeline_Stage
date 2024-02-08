@@ -17,10 +17,10 @@ vcf_ref_select$V1 = sub("8", "chr8", vcf_ref_select$V1)
 
 library('tidyr')
 #Concatener les colonnes 1,2,4,5
-vcf_12x_concat = unite(vcf_12x_select, Variants, sep = "_", remove = TRUE)
-vcf_24x_concat = unite(vcf_24x_select, Variants, sep = "_", remove = TRUE)
-vcf_40x_concat = unite(vcf_40x_select, Variants, sep = "_", remove = TRUE)
-vcf_ref_concat = unite(vcf_ref_select, Variants, sep = "_", remove = TRUE)
+vcf_12x_concat = tidyr::unite(vcf_12x_select, Variants, sep = "_", remove = TRUE)
+vcf_24x_concat = tidyr::unite(vcf_24x_select, Variants, sep = "_", remove = TRUE)
+vcf_40x_concat = tidyr::unite(vcf_40x_select, Variants, sep = "_", remove = TRUE)
+vcf_ref_concat = tidyr::unite(vcf_ref_select, Variants, sep = "_", remove = TRUE)
   
 #Ajout de l'ID dans les 4 vcf
 vcf_12x_concat <- vcf_12x_concat %>% mutate(Id = 1:n())
@@ -140,3 +140,55 @@ ggplot(cat_split, aes(x=cat_split$gene, y=)) +
   geom_bar(color="blue", fill=rgb(0.1,0.4,0.5,0.7))
 
 ggplotly(fig)
+
+cat_split %>% filter(type == "undetermined")
+
+# 08/02/2024
+
+library("ggplot2")
+#create datasets
+category = cat_split$Catégorie
+condition= cat_split$type
+nombre = cat_split %>% group_by (cat_split$Catégorie) %>% count(cat_split$type)
+
+data=data.frame(nombre)
+plot = ggplot(data, aes(fill=cat_split.type, y=n, x=cat_split.Catégorie))+geom_bar(position = "dodge", stat="identity")
+plot = ggplot(data, aes(fill=cat_split.type, y=n, x=cat_split.Catégorie))+geom_bar(position = "stack", stat="identity")
+
+library(plotly)
+ggplotly(plot)
+
+vcf_12x_concat$VCF = "vcf12x"
+vcf_24x_concat$VCF = "vcf24x"
+vcf_40x_concat$VCF = "vcf40x"
+vcf_ref_concat$VCF = "vcfref"
+
+vcf_bind = rbind(vcf_12x_concat,vcf_24x_concat,vcf_40x_concat,vcf_ref_concat)
+vcf_bind = vcf_bind %>% separate(Variants, c("chromosome", "position", "ref", "alt"), "_")
+
+vcf_bind$Type = ifelse(vcf_bind$alt == "*", "undetermined",
+                       ifelse (nchar(vcf_bind$ref)==1 & nchar(vcf_bind$alt)==1, "SNP",
+                               ifelse(nchar(vcf_bind$ref) >= 2 & nchar(vcf_bind$alt) == 1, "délétion",
+                                      ifelse(nchar(vcf_bind$ref) ==1 & nchar(vcf_bind$alt)>=2, "insertion", 
+                                             "autre"))))
+
+vcf_bind$Gene = ifelse(vcf_bind$chromosome == "chr1", "UTS2",
+                       ifelse(vcf_bind$chromosome =="chr4", "EPHA5",
+                              ifelse(vcf_bind$chromosome =="chr8", "LPL","autre")))
+
+vcf_bind %>% filter(Type == "undetermined")
+
+catvcf = vcf_bind$VCF
+condtype = vcf_bind$Type
+nb = vcf_bind %>% group_by (vcf_bind$VCF) %>% count(vcf_bind$Type)
+data2=data_frame(nb)
+
+# renommer colonnes
+names(data2)[1]="Nom_VCF"
+names(data2)[2]="Type_Variants"
+names(data2)[3]="Nombre_Variants"
+plot2 = ggplot(data2, aes(fill=Type_Variants, y=Nombre_Variants, x=Nom_VCF))+geom_bar(position = "dodge", stat="identity")
+plot3 = ggplot(data2, aes(fill=Type_Variants, y=Nombre_Variants, x=Nom_VCF))+geom_bar(position = "stack", stat="identity")
+library(plotly)
+ggplotly(plot3)
+
