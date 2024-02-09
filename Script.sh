@@ -1,5 +1,4 @@
 #!/bin/bash -i
-
 while getopts "o:s:r:n:i:f:a:v:" opt
 do
   case "$opt" in
@@ -96,6 +95,7 @@ vcf_cnnscorevariants="${path}/Analysis/${sample}_cnnscorevariants_2D.vcf.gz"
 vcf_filtervarianttranches="${path}/Analysis/${sample}_filtervarianttranches_2D.vcf"
 vcf_decomposed="${path}/Analysis/${sample}_filtervarianttranches_2D_decomposed.vcf"
 vcf_normalized="${path}/Analysis/${sample}_filtervarianttranches_2D_decomposed_normalized.vcf"
+vcf_uniq="${path}/Analysis/${sample}_filtervarianttranches_2D_decomposed_normalized_uniq.vcf"
 vcf_funcotated="${path}/Analysis/${sample}_filtervarianttranches_2D_decomposed_normalized_funcotated.vcf"
 
 echo $R1_raw
@@ -313,12 +313,13 @@ else
 fi
 
 ################################################################################
-# VT DECOMPOSE et VT NORMALIZE
+# VT DECOMPOSE, VT NORMALIZE et VT UNIQ
 ################################################################################
 # VT DECOMPOSE
+#option -s ajouté dans decompose pour avoir AD DP sur les variants décomposés
 if [ ! -f "$vcf_decomposed" ];then
   echo "Les fichiers vcf_decomposed n'existent pas"
-  vt decompose $vcf_filtervarianttranches -o $vcf_decomposed
+  vt decompose $vcf_filtervarianttranches -o $vcf_decomposed -s
 else
   echo "Les fichiers vcf_decomposed existent déjà"
 fi
@@ -331,12 +332,20 @@ else
   echo "Les fichiers vcf_normalized existent déjà"
 fi
 
+# VT UNIQ pour enlever les variants doublons
+if  [ ! -f "$vcf_uniq" ];then
+  echo "Les fichiers vcf_uniq n'existent pas"
+  vt uniq $vcf_normalized -o $vcf_uniq
+else
+  echo "Les fichiers vcf_uniq existent déjà"
+fi
+
 ################################################################################
 # FUNCOTATOR = annotation des variants avec Gencode
 ################################################################################
 if  [ ! -f "$vcf_funcotated" ];then
   echo "Les fichiers vcf_funcotated n'existent pas"
-  gatk Funcotator --variant $vcf_normalized --reference $reference \
+  gatk Funcotator --variant $vcf_uniq --reference $reference \
   --ref-version $versiongenome --data-sources-path $funcotatordata/gencode \
   --output $vcf_funcotated --output-file-format VCF
 else
