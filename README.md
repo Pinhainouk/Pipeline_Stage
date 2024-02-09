@@ -47,13 +47,13 @@ Ce document détaille les différentes étapes de la réalisation d'un pipeline 
 * **Création de l'index du génome hg19: env. 2-3h**
 
 Il s'agit du génome version hg19 sans les chromosomes alternatifs et avec les mitochrondries.
-**hg19_genome_index path_hg19.p13.plusMT.no_alt_analysis_set.fa.gz** téléchargé sur Genome Browser (dernière modification 2020-03-09 10:21) : 
+**hg19.p13.plusMT.no_alt_analysis_set.fa.gz** téléchargé sur Genome Browser (dernière modification 2020-03-09 10:21) : 
 https://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/analysisSet/
 
 **Quand on créé l'index, il est important qu'il ait le même nom que la référence.**
 
 ```
-./bwa index -p hg19 hg19.fa.gz
+./bwa index -p hg19.p13.plusMT.no_alt_analysis_set.fa {path}/hg19.p13.plusMT.no_alt_analysis_set.fa.gz
 ```
 
 * **Installation de l'environnement conda (v23.11.0) pour l'outil GATK.**
@@ -63,9 +63,15 @@ https://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/analysisSet/
 vim ~/.bashrc
 ```
 
-**Noms des alias :** 
-
-à ajouter
+| Outils | Noms alias |
+|----- |------
+| **FastQC** | fastqc
+| **BBDuk** | bbduk
+| **BWA** | bwa
+| **Samtools** | samtools
+| **Picard** | picard
+| **GATK** | gatk
+| **Vt** | vt
 
 ## **Guide d'installation et versions des outils :** 
 | Outils | Liens d'installation | Versions
@@ -172,9 +178,17 @@ Exemple de lancement :
 -v hg19 \
 ```
 
-* Soit on lance le **Script_lancement.sh** avec un fichier de config contenant tous les échantillons à analyser.
+* Soit on lance le **Script_lancement.sh** avec un fichier de config (Config.txt) contenant tous les échantillons à analyser. 
+Dans le Script_lancement.sh, penser à modifier les chemins dans les variables ```fichier_liste``` et ```script``` pour indiquer les chemins où se trouvent respectivement le fichier de config et le script. Il boucle alors sur le fichier de config tant qu'une ligne n'est pas vide et il exécute le script sur chaque échantillon.
 
-Il boucle alors sur le fichier de config tant qu'une ligne n'est pas vide et il exécute le script sur chaque échantillon.
+Exemple de fichier de config à faire avec une ligne par échantillon :
+
+```
+nom_echantillon_1
+nom_echantillon_2
+nom_echantillon_3
+...
+```
 
 Exemple de lancement :
 
@@ -185,10 +199,8 @@ Exemple de lancement :
 ## **Fichiers de sortie** :
 
 - Fichiers BAM final : après l'étape BQSR
-- Fichiers VCF final : après l'annotation fonctionnelle
-- MultiQC
-
-A revoir
+- Fichiers VCF final : après l'annotation fonctionnelle Funcotator
+- MultiQC : A revoir
 
 ## **Glossaire :**
 BAM : Binary Alignment Map
