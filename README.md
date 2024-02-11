@@ -37,7 +37,7 @@ Ce document détaille les différentes étapes de la réalisation d'un pipeline 
 
 * **Vt normalize** est utilisé pour normaliser les variants (qui ne sont pas toujours représenter de la même façon dans le vcf selon l'outil d'appel de variants.) La normalisation ajuste les positions de début et de fin de la représentation des variants. -q n'imprime pas les ptions ni le résumé -m donne des avertissements mais ne quitte pas lorsque REF est incompatible avec la séquence de référence masquée pour les non-SNP. 
 
-* **Vt uniq** est utilisé pour supprimer les éventuels variants en double dans le . 
+* **Vt uniq** est utilisé pour supprimer les éventuels variants en double dans le vcf. 
 
 * La dernière étape est celle de l'annotation fonctionnelle des variants à l'aide de **Funcotator de GATK**. Il utilise une ou plusieurs bases de données mises à jour régulièrement qui contiennent des informations sur les régions génomiques, les transcrits, les protéines et les effets fonctionnels des variants sur les gènes associés. Nous avons utilisé la base Gencode (funcotator_dataSources.v1.4.20180615/gencode)
 
