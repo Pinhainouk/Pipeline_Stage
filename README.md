@@ -30,12 +30,14 @@ Ce document détaille les différentes étapes de la réalisation d'un pipeline 
 
 * L'annotation du fichier .vcf avec **CNNScoreVariants de GATK Model 2D** pour attribuer des scores de confiance aux variants génétiques en se basant sur l'apprentissage profond fourni par un réseau de neurones convolutionnel (CNN). Ces scores aident à évaluer la probabilité qu'un variant soit réel par opposition à un faux positif.
 
-* L'application d'un filtre par tranche avec **FilterVariantTranches de GATK Model 2D** aux fichiers VCF, en fonction des scores provenant de l'étape précédente **CNNScoreVariants de GATK**, permet de limiter les faux variants. --snp-tranche 99.95: filtre par tranche 99.95% des snp
+* L'application d'un filtre par tranche avec **FilterVariantTranches de GATK Model 2D** aux fichiers vcf, en fonction des scores provenant de l'étape précédente **CNNScoreVariants de GATK**, permet de limiter les faux variants. --snp-tranche 99.95: filtre par tranche 99.95% des snp
 --indel-tranche 99.4 : filtre par tranche 99.4% des indel en fonction des scores provenant de l'annotation dans le champ INFO de l'étape précédente.
 
-* **Vt decompose** est utilisé pour décomposer un variant complexe représenté par plusieurs variants simples (une insertion suivie d'une substitution décomposée en deux variants distinces sur deux lignes du vcf).
+* **Vt decompose** est utilisé pour décomposer un variant complexe représenté par plusieurs variants simples (une insertion suivie d'une substitution décomposée en deux variants distinces sur deux lignes du vcf). -s divise les champs INFO et GENOTYPE de façon appropriée.
 
-* **Vt normalize** est utilisé pour normaliser les variants (pas toujours représenter de la même façon dans le vcf selon l'outil d'appel de variants.) La normalisation ajuste les positions de début et de fin de la représentation des variants. -q -m -r
+* **Vt normalize** est utilisé pour normaliser les variants (qui ne sont pas toujours représenter de la même façon dans le vcf selon l'outil d'appel de variants.) La normalisation ajuste les positions de début et de fin de la représentation des variants. -q n'imprime pas les ptions ni le résumé -m donne des avertissements mais ne quitte pas lorsque REF est incompatible avec la séquence de référence masquée pour les non-SNP. 
+
+* **Vt uniq** est utilisé pour supprimer les éventuels variants en double dans le . 
 
 * La dernière étape est celle de l'annotation fonctionnelle des variants à l'aide de **Funcotator de GATK**. Il utilise une ou plusieurs bases de données mises à jour régulièrement qui contiennent des informations sur les régions génomiques, les transcrits, les protéines et les effets fonctionnels des variants sur les gènes associés. Nous avons utilisé la base Gencode (funcotator_dataSources.v1.4.20180615/gencode)
 
@@ -136,7 +138,7 @@ options : -o  output VCF file [-]
  ```         
 ## **Lancement du pipeline :**
 
-**Avant d'exécuter le Script, activer l'environnement conda :**
+**Avant d'exécuter le Script, activer l'environnement conda pour le fonctionnement de l'outil gatk :**
 
 ```
 conda activate gatk
@@ -197,10 +199,9 @@ Exemple de lancement :
 ```
 
 ## **Fichiers de sortie** :
-
-- Fichiers BAM final : après l'étape BQSR
-- Fichiers VCF final : après l'annotation fonctionnelle Funcotator
-- MultiQC : A revoir
+- Fichiers BAM finaux, après l'étape BQSR : ```{path}/{sample}_aln_mem_sort_rmduplicates_apply_bqsr.bam```
+- Fichiers VCF finaux, après l'annotation fonctionnelle Funcotator : ```{path}/{sample}_filtervarianttranches_2D_decomposed_normalized_funcotated.vcf```
+- MultiQC : des fastq, fastq après bbduk et stats samtools
 
 ## **Glossaire :**
 BAM : Binary Alignment Map
