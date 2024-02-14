@@ -13,8 +13,6 @@ Ce document détaille les différentes étapes de la réalisation d'un pipeline 
 
 * Le contrôle de la qualité des fichiers de séquences nettoyées avec **FastQC**.
 
-* L'indexation du génome de référence (hg19) avec **BWA** qui permet de préparer une structure de données qui facilite la recherche rapide des positions des séquences dans le génome à l'étape suivante d'alignement.
-
 * L'alignement avec **BWA-MEM** consiste à trouver des correspondances exactes maximales de sous-séquences dans le génome de référence indexé et de procéder à une extension de ces sous-séquences avec l'algorithme d'alignement local de Smith-Waterman pour obtenir des alignements plus précis. **BWA-MEM** permet d'aligner des séquences requêtes de 70 à 1Mbp.
 
 * Réalisation de statistiques à partir des bam avec **Samtools**.
@@ -48,6 +46,7 @@ Ce document détaille les différentes étapes de la réalisation d'un pipeline 
 
 * **Création de l'index du génome hg19: env. 2-3h**
 
+L'indexation du génome de référence avec **BWA** permet de préparer une structure de données qui facilite la recherche rapide des positions des séquences dans le génome à l'étape d'alignement.
 Il s'agit du génome version hg19 sans les chromosomes alternatifs et avec les mitochrondries.
 **hg19.p13.plusMT.no_alt_analysis_set.fa.gz** téléchargé sur Genome Browser (dernière modification 2020-03-09 10:21) : 
 https://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/analysisSet/
