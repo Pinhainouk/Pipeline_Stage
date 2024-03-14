@@ -1,0 +1,972 @@
+---
+title: "Rmd_V2_14032024"
+output: html_document
+date: "2024-03-14"
+---
+
+## Import des packages
+```{r}
+rm(list=ls())
+library('dplyr')
+library('tidyr')
+library('VennDiagram')
+library('grid')
+library('futile.logger')
+library("ggplot2")
+library("gplots")
+library('plotly')
+library('tools')
+library('cowplot')
+```
+
+## Import des VCF
+```{r}
+vcf_12x = read.table("/home/elodie/Documents/Analysis/gold_12x_on_data_elodie_filtervarianttranches_2D_decomposed_normalized_uniq.vcf")
+vcf_24x = read.table("/home/elodie/Documents/Analysis/gold_24x_on_data_elodie_filtervarianttranches_2D_decomposed_normalized_uniq.vcf")
+vcf_40x = read.table("/home/elodie/Documents/Analysis/gold_40x_on_data_elodie_filtervarianttranches_2D_decomposed_normalized_uniq.vcf")
+vcf_ref = read.table("/home/elodie/Documents/Elodie/Datas_ismael_ref/gold_on_data_elodie_ismael_decomposed_normalize_uniq.vcf")
+```
+
+Sélection des colonnes 1 à 4
+```{r}
+vcf_12x_select =  vcf_12x %>% select(1,2,4,5)
+vcf_24x_select =  vcf_24x %>% select(1,2,4,5)
+vcf_40x_select =  vcf_40x %>% select(1,2,4,5)
+vcf_ref_select =  vcf_ref %>% select(1,2,4,5)
+```
+
+Changement de "1" en "chr1" du vcf ref
+```{r}
+vcf_ref_select$V1 = sub("1", "chr1", vcf_ref_select$V1)
+vcf_ref_select$V1 = sub("4", "chr4", vcf_ref_select$V1)
+vcf_ref_select$V1 = sub("8", "chr8", vcf_ref_select$V1)
+```
+Concatener les colonnes 1 à 5
+```{r}
+vcf_12x_concat = tidyr::unite(vcf_12x_select, variants, sep = "_", remove = TRUE)
+vcf_24x_concat = tidyr::unite(vcf_24x_select, variants, sep = "_", remove = TRUE)
+vcf_40x_concat = tidyr::unite(vcf_40x_select, variants, sep = "_", remove = TRUE)
+vcf_ref_concat = tidyr::unite(vcf_ref_select, variants, sep = "_", remove = TRUE)
+```
+
+Ajout de l'ID dans les 4 vcf
+```{r}
+vcf_12x_concat <- vcf_12x_concat %>% mutate(Id = 1:n())
+vcf_24x_concat <- vcf_24x_concat %>% mutate(Id = 1:n())
+vcf_40x_concat <- vcf_40x_concat %>% mutate(Id = 1:n())
+vcf_ref_concat <- vcf_ref_concat %>% mutate(Id = 1:n())
+```
+
+Merger les 4 vcf par les variants
+```{r}
+vcf_merge <- merge(vcf_12x_concat, vcf_24x_concat, by = "variants", all.x=TRUE, all.y=TRUE)
+names(vcf_merge)[2]= "vcf_12x"
+names(vcf_merge)[3]= "vcf_24x"
+
+vcf_merge = merge(vcf_merge, vcf_40x_concat, by = "variants", all.x=TRUE, all.y=TRUE)
+names(vcf_merge)[4]= "vcf_40x"
+
+vcf_merge = merge(vcf_merge, vcf_ref_concat, by = "variants", all.x=TRUE, all.y=TRUE)
+names(vcf_merge)[5]= "vcf_ref"
+```
+
+Remplacer les NA par 0 et le reste par 1
+```{r}
+vcf_merge$vcf_12x <- ifelse(is.na(vcf_merge$vcf_12x), 0, 1)
+vcf_merge$vcf_24x <- ifelse(is.na(vcf_merge$vcf_24x), 0, 1)
+vcf_merge$vcf_40x <- ifelse(is.na(vcf_merge$vcf_40x), 0, 1)
+vcf_merge$vcf_ref <- ifelse(is.na(vcf_merge$vcf_ref), 0, 1)
+```
+
+Somme des occurrences des variants dans les vcf
+```{r}
+vcf_merge$somme <- rowSums(vcf_merge[, c("vcf_12x", "vcf_24x", "vcf_40x", "vcf_ref")])
+```
+
+## Représentation en Venn Diagram des intersections, nombre de variants communs entre les VCF
+Fonction d'aide pour afficher le diagramme de Venn
+```{r}
+display_venn <- function(x, ...){
+  library(VennDiagram)
+  grid.newpage()
+  venn_object <- venn.diagram(x, filename = NULL, ...)
+  grid.draw(venn_object)
+}
+```
+
+VennDiagram n&b
+```{r}
+ensemble = list(vcf_12x=vcf_12x_concat$variants, vcf_24x=vcf_24x_concat$variants, vcf_40x=vcf_40x_concat$variants, vcf_ref=vcf_ref_concat$variants)
+venn.diagram(ensemble, category.names=c("vcf_12x" , "vcf_24x" , "vcf_40x", "vcf_ref"), filename = "Venn diagramme vcf_n&b")
+display_venn(ensemble)
+```
+
+VennDiagram couleur
+```{r}
+display_venn(
+  ensemble,
+  category.names = c("vcf_12x" , "vcf_24x" , "vcf_40x", "vcf_ref"),
+  fill = c("#999999", "#E69F00", "#56B4E9", "#009E73"))
+```
+
+## Extraction des variants communs aux VCF dans un dataframe
+Intersections du Venn Diagram et mise en dataframe
+```{r}
+venndiag = venn(data=ensemble)
+cat_ref = as.data.frame(attributes(venndiag)$intersections$vcf_ref)
+cat_40x = as.data.frame(attributes(venndiag)$intersections$vcf_40x)
+cat_24x = as.data.frame(attributes(venndiag)$intersections$vcf_24x)
+cat_12x = as.data.frame(attributes(venndiag)$intersections$vcf_12x)
+cat_all = as.data.frame(attributes(venndiag)$intersections$`vcf_12x:vcf_24x:vcf_40x:vcf_ref`)
+cat_24x_40x_ref = as.data.frame(attributes(venndiag)$intersections$`vcf_24x:vcf_40x:vcf_ref`)
+cat_12x_40x_ref = as.data.frame(attributes(venndiag)$intersections$`vcf_12x:vcf_40x:vcf_ref`)
+cat_12x_24x_40x = as.data.frame(attributes(venndiag)$intersections$`vcf_12x:vcf_24x:vcf_40x`)
+cat_40x_ref = as.data.frame(attributes(venndiag)$intersections$`vcf_40x:vcf_ref`)
+cat_24x_ref = as.data.frame(attributes(venndiag)$intersections$`vcf_24x:vcf_ref`)
+cat_24x_40x = as.data.frame(attributes(venndiag)$intersections$`vcf_24x:vcf_40x`)
+cat_12x_40x = as.data.frame(attributes(venndiag)$intersections$`vcf_12x:vcf_40x`)
+```
+
+Ajout de colonne dans les dataframes par catégories
+```{r}
+cat_ref$categorie = c("cat_ref")
+cat_40x$categorie = c("cat_40x")
+cat_24x$categorie = c("cat_24x")
+cat_12x$categorie = c("cat_12x")
+cat_all$categorie = c("cat_all")
+cat_24x_40x_ref$categorie = c("cat_24x_40x_ref")
+cat_12x_40x_ref$categorie = c("cat_12x_40x_ref")
+cat_12x_24x_40x$categorie = c("cat_12x_24x_40")
+cat_40x_ref$categorie = c("cat_40x_ref")
+cat_24x_ref$categorie = c("cat_24x_ref")
+cat_24x_40x$categorie = c("cat_24x_40x")
+cat_12x_40x$categorie = c("cat_12x_40x")
+```
+
+Création d'un nouveau dataframe "cat" avec tous les variants et leurs catégories
+```{r}
+list_cat = list(cat_ref,cat_40x,cat_24x,cat_12x,cat_all,cat_24x_40x_ref,cat_12x_40x_ref,cat_12x_24x_40x,cat_40x_ref,cat_24x_ref,cat_24x_40x,cat_12x_40x)
+newcol = c("variants","categorie")
+new_list = lapply(list_cat, setNames, newcol)
+cat = bind_rows(new_list)
+```
+
+Création d'un nouveau dataframe "cat_split" avec les éléments des variants séparés en plusieurs colonnes
+```{r}
+cat_split = cat %>% separate(variants, c("chromosome", "position", "ref", "alt"), "_")
+```
+
+Création d'une colonne type dans "cat_split" en fonction du type de variants
+```{r}
+cat_split$type <- ifelse(cat_split$alt == "*", "undetermined",
+                        ifelse (nchar(cat_split$ref)==1 & nchar(cat_split$alt)==1, "SNV",
+                               ifelse(nchar(cat_split$ref) >= 2 & nchar(cat_split$alt) == 1, "deletion",
+                                      ifelse(nchar(cat_split$ref) ==1 & nchar(cat_split$alt)>=2, "insertion", 
+                                             "autre"))))
+```
+
+Création d'une colonne Gène dans "cat_split"
+```{r}
+cat_split$gene = ifelse(cat_split$chromosome =="chr4", "EPHA5",
+                        ifelse(cat_split$chromosome =="chr1", "UTS2",
+                               ifelse(cat_split$chromosome =="chr8", "LPL", "autre")))
+
+```
+
+## Représentation du nombre et type de variants dans chaque catégorie
+```{r}
+cat_split_nb = cat_split %>% group_by (cat_split$categorie) %>% count(cat_split$type)
+
+names(cat_split_nb)[1]="categorie"
+names(cat_split_nb)[2]="type"
+names(cat_split_nb)[3]="nombre"
+
+fig1 = ggplot(cat_split_nb, aes(x=categorie, y=nombre, fill=type)) +
+  geom_bar(position="stack", stat="identity")+theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggplotly(fig1)
+```
+
+
+## Représentation du nombre et type de variants dans les 3 gènes
+```{r}
+cat_split_nb2 = cat_split %>% group_by (cat_split$categorie, cat_split$gene) %>% count(cat_split$type)
+
+names(cat_split_nb2)[1]="categorie"
+names(cat_split_nb2)[2]="gene"
+names(cat_split_nb2)[3]="type"
+names(cat_split_nb2)[4]="nombre"
+
+fig2 = ggplot(cat_split_nb2, aes(x=gene, y=nombre, fill=type)) +
+  geom_bar(position="dodge", stat="identity")+theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggplotly(fig2)
+```
+
+## Exploration de chaque VCF
+```{r}
+vcf_12x_concat$vcf = "vcf12x"
+vcf_24x_concat$vcf = "vcf24x"
+vcf_40x_concat$vcf = "vcf40x"
+vcf_ref_concat$vcf = "vcfref"
+
+vcf_bind = rbind(vcf_12x_concat,vcf_24x_concat,vcf_40x_concat,vcf_ref_concat)
+vcf_bind = vcf_bind %>% separate(variants, c("chromosome", "position", "ref", "alt"), "_")
+
+vcf_bind$type = ifelse(vcf_bind$alt == "*", "undetermined",
+                       ifelse (nchar(vcf_bind$ref)==1 & nchar(vcf_bind$alt)==1, "SNV",
+                               ifelse(nchar(vcf_bind$ref) >= 2 & nchar(vcf_bind$alt) == 1, "deletion",
+                                      ifelse(nchar(vcf_bind$ref) ==1 & nchar(vcf_bind$alt)>=2, "insertion", 
+                                             "autre"))))
+
+vcf_bind$gene = ifelse(vcf_bind$chromosome == "chr1", "UTS2",
+                       ifelse(vcf_bind$chromosome =="chr4", "EPHA5",
+                              ifelse(vcf_bind$chromosome =="chr8", "LPL","autre")))
+```
+
+## Type de variants par VCF
+```{r}
+nombre_type = vcf_bind %>% group_by (vcf_bind$vcf) %>% count(vcf_bind$type)
+data_nombre = data_frame(nombre_type)
+names(data_nombre)[1] = "nom_vcf"
+names(data_nombre)[2] = "type_variants"
+names(data_nombre)[3] = "nombre_variants"
+
+fig3 = ggplot(data_nombre, aes(fill=type_variants, y=nombre_variants, x=nom_vcf))+
+  geom_bar(position = "dodge", stat="identity")
+
+fig4 = ggplot(data_nombre, aes(fill=type_variants, y=nombre_variants, x=nom_vcf))+
+  geom_bar(position = "stack", stat="identity")
+
+fig5 = ggplot(data_nombre, aes(fill=type_variants, y=nom_vcf, x=nombre_variants))+
+  geom_bar(position = "stack", stat="identity")
+
+ggplotly(fig3)
+ggplotly(fig4)
+ggplotly(fig5)
+
+```
+
+## Nombre de variants par VCF et par gène
+```{r}
+nb_gene = vcf_bind %>% group_by (vcf_bind$gene, vcf_bind$vcf) %>% count(vcf_bind$type)
+data_vcf = data_frame(nb_gene)
+names(data_vcf)[1] = "nom_genes"
+names(data_vcf)[2] = "nom_vcf"
+names(data_vcf)[3] = "type_variants"
+names(data_vcf)[4] = "nombre_variants"
+fig6 = ggplot(data_vcf, aes(fill=nom_genes, y=nombre_variants, x=nom_vcf))+geom_bar(position = "stack", stat="identity")
+
+ggplotly(fig6)
+```
+
+## Nombre et type de variants par VCF et par gènes
+```{r}
+data_vcf$nom_vcf_nom_genes = paste(data_vcf$nom_vcf, data_vcf$nom_genes, sep="_")
+fig7 = ggplot(data_vcf, aes(fill=type_variants, y=nombre_variants, x=nom_vcf_nom_genes))+
+  geom_bar(position = position_fill(reverse=TRUE), stat="identity")+
+  labs(title = "Représentation graphique du nombre de variants en fonction des gènes et des VCF par types de variants")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  
+ggplotly(fig7)
+```
+
+## Exploration des insertions et délétions
+
+Création de 3 dataframes : insertions, délétions et SNV
+```{r}
+vcf_deletion = vcf_bind %>% filter(type == "deletion")
+vcf_insertion = vcf_bind %>% filter(type == "insertion")
+vcf_snv = vcf_bind %>% filter(type == "SNV")
+```
+
+Compter la taille des insertions et délétions
+```{r}
+vcf_deletion$taille_delins = (nchar(vcf_deletion$ref)-1)
+vcf_insertion$taille_delins = (nchar(vcf_insertion$alt)-1)
+```
+
+## Représentation en boxplot des délétions par vcf
+```{r}
+fig8 = ggplot(vcf_deletion, aes(x = vcf, y = taille_delins)) +
+  geom_boxplot(outlier.colour = "#756bb1", outlier.shape = 2, outlier.size = 3) +
+  geom_point(stat = "summary", fun = "mean", size = 3, color = "#2ca25f") +
+  coord_flip() +
+  theme_classic() +
+  labs(x = "VCF", y = "Taille des délétions", title = "Représentation en boxplot de la taille des délétions par VCF") + 
+  theme(plot.title = element_text(hjust = 0.5, size=12, face="bold"), plot.subtitle = element_text(hjust = 0.5))
+
+fig8
+ggplotly(fig8)
+```
+
+## Représentation en boxplot des délétions par gènes
+```{r}
+fig9 = ggplot(vcf_deletion, aes(x = gene, y = taille_delins)) +
+  geom_boxplot(outlier.colour = "#756bb1", outlier.shape = 2, outlier.size = 3) +
+  geom_point(stat = "summary", fun = "mean", size = 3, color = "#2ca25f") +
+  coord_flip() +
+  theme_classic() +
+  labs(x = "Gènes", y = "Taille des délétions", title = "Représentation en boxplot de la taille des délétions par gènes") + 
+  theme(plot.title = element_text(hjust = 0.5, size=12, face="bold"), plot.subtitle = element_text(hjust = 0.5))
+
+fig9
+ggplotly(fig9)
+```
+
+## Représentation en boxplot des insertions par VCF
+```{r}
+fig10 = ggplot(vcf_insertion, aes(x=vcf, y=taille_delins)) +
+  geom_boxplot(outlier.colour = "#d95f0e", outlier.shape = 2, outlier.size = 3) +
+  geom_point(stat = "summary", fun = "mean", size = 3, color = "#2b8cbe") +
+  coord_flip() +
+  theme_classic() +
+  labs(x = "VCF", y = "Taille des insertions", title = "Représentation en boxplot de la taille des insertions par VCF") + 
+  theme(plot.title = element_text(hjust = 0.5, size=12, face="bold"), plot.subtitle = element_text(hjust = 0.5))
+
+fig10
+ggplotly(fig10)
+```
+
+## Représentation en boxplot des insertions par gènes
+```{r}
+fig11 = ggplot(vcf_insertion, aes(x=gene, y=taille_delins)) +
+  geom_boxplot(outlier.colour = "#d95f0e", outlier.shape = 2, outlier.size = 3) +
+  geom_point(stat = "summary", fun = "mean", size = 3, color = "#2b8cbe") +
+  coord_flip() +
+  theme_classic() +
+  labs(x = "Gènes", y = "Taille des insertions", title = "Représentation en boxplot de la taille des insertions par gènes") + 
+  theme(plot.title = element_text(hjust = 0.5, size=12, face="bold"), plot.subtitle = element_text(hjust = 0.5))
+
+fig11
+ggplotly(fig11)
+```
+
+Création d'un dataframe avec délétions et insertions
+```{r}
+vcfdelins = rbind(vcf_insertion, vcf_deletion)
+```
+
+## Représentation en boxplot des insertions et délétions par VCF
+```{r}
+fig12 = ggplot(vcfdelins, aes(x = taille_delins, y = vcf)) + geom_boxplot(aes(fill=type)) + theme_classic() + 
+  labs(x = "Taille des delins", y = "VCF", title = "Représentation en boxplot de la taille des insertions et délétions par VCF") + 
+  theme(plot.title = element_text(hjust = 0.5, size=12, face="bold"), plot.subtitle = element_text(hjust = 0.5))
+
+fig12
+```
+
+```{r}
+fig13 = ggplot(vcfdelins, aes(x = taille_delins, y = gene)) + geom_boxplot(aes(fill=type)) + theme_classic() + 
+  labs(x = "Gènes", y = "Taille des delins", title = "Représentation en boxplot de la taille des insertions et délétions par Gènes") + 
+  theme(plot.title = element_text(hjust = 0.5, size=12, face="bold"), plot.subtitle = element_text(hjust = 0.5))
+
+fig13
+```
+
+## Représentation des délétions par gène et par VCF
+```{r}
+fig14 = ggplot(vcf_deletion, aes(x = vcf, y = taille_delins)) +
+  geom_boxplot(aes(fill=gene)) +
+  geom_point(stat = "summary", fun = "mean", size = 3, color = "#2ca25f")+
+  theme_classic() +
+  coord_flip() +
+  labs(x = "VCF", y = "Taille des délétions", title = "Représentation en boxplot de la taille des délétions par gènes et VCF") + 
+  theme(plot.title = element_text(hjust = 0.5, size=12, face="bold"), plot.subtitle = element_text(hjust = 0.5))
+
+fig15 = ggplot(vcf_deletion, aes(x = gene, y = taille_delins)) +
+  geom_boxplot(aes(fill=vcf)) +
+  geom_point(stat = "summary", fun = "mean", size = 3, color = "#2ca25f")+
+  theme_classic() +
+  labs(x = "Gènes", y = "Taille des délétions", title = "Représentation en boxplot de la taille des délétions par gènes et VCF") + 
+  theme(plot.title = element_text(hjust = 0.5, size=12, face="bold"), plot.subtitle = element_text(hjust = 0.5))
+
+fig14
+fig15
+
+```
+
+## Représentation des insertions par gène et par VCF
+```{r}
+fig16 = ggplot(vcf_insertion, aes(x = vcf, y = taille_delins)) +
+  geom_boxplot(aes(fill=gene)) +
+  geom_point(stat = "summary", fun = "mean", size = 3, color = "#2b8cbe") +
+  coord_flip() +
+  theme_classic() +
+  labs(x = "VCF", y = "Taille des insertions", title = "Représentation en boxplot de la taille des insertions par gènes") + 
+  theme(plot.title = element_text(hjust = 0.5, size=12, face="bold"), plot.subtitle = element_text(hjust = 0.5))
+
+fig17 = ggplot(vcf_insertion, aes(x = gene, y = taille_delins)) +
+  geom_boxplot(aes(fill=vcf)) +
+  geom_point(stat = "summary", fun = "mean", size = 3, color = "#2b8cbe") +
+  theme_classic() +
+  labs(x = "Gènes", y = "Taille des insertions", title = "Représentation en boxplot de la taille des insertions par gènes") + 
+  theme(plot.title = element_text(hjust = 0.5, size=12, face="bold"), plot.subtitle = element_text(hjust = 0.5))
+
+fig16
+fig17
+```
+
+Explorations des valeurs aberrantes des delins : Faire un tableau
+```{r}
+vcfdelins %>% filter(taille_delins==40)
+# zone avec plein de dél, non retrouvée chez Ismael
+vcfdelins %>% filter(taille_delins==30)
+# 3 read dans bam 40x et 0 read dans bam 24x
+vcfdelins %>% filter(taille_delins>=20 & taille_delins<30)
+# del 24 retrouvée chez Ismael, absence Elodie or présence dans tous les bams
+# del 23 retrouvée partout : OK
+# del 22 seulement dans 24x et 40 x : zones avec plusieurs délétions
+vcfdelins %>% filter(taille_delins>40)
+# insertion de 56 absente dans les bam
+vcfdelins %>% filter(taille_delins>20 & taille_delins<30)
+# insertion absente dans bam, plusieurs insertions ponctuelles de ?pb
+
+#Voir si présence d'inversions
+vcfdelins %>% filter(nchar(ref) == nchar(alt))
+```
+
+## Explorations des SNV
+Ajout colonne dans dataframe vcf_snv pour les types de transitions/transversions
+```{r}
+vcf_snv$type_substitutions = ifelse (vcf_snv$ref=="A" & vcf_snv$alt=="G", "transition_A>G",
+                                     ifelse (vcf_snv$ref=="G" & vcf_snv$alt=="A", "transition_G>A",
+                                            ifelse(vcf_snv$ref=="C" & vcf_snv$alt=="T", "transition_C>T",
+                                                   ifelse(vcf_snv$ref=="T" & vcf_snv$alt=="C", "transition_T>C",
+                                                          ifelse(vcf_snv$ref=="A" & vcf_snv$alt=="C", "transversion_A>C",
+                                                                 ifelse(vcf_snv$ref=="C" & vcf_snv$alt=="A", "transversion_C>A",
+                                                                        ifelse(vcf_snv$ref=="G" & vcf_snv$alt=="T", "transversion_G>T",
+                                                                               ifelse(vcf_snv$ref=="T" & vcf_snv$alt=="G", "transversion_T>G",
+                                                                                      ifelse(vcf_snv$ref=="A" & vcf_snv$alt=="T", "transversion_A>T",
+                                                                                             ifelse(vcf_snv$ref=="T" & vcf_snv$alt=="A", "transversion_T>A",
+                                                                                                    ifelse(vcf_snv$ref=="G" & vcf_snv$alt=="C", "transversion_G>C",
+                                                                                                           ifelse(vcf_snv$ref=="C" & vcf_snv$alt=="G", "transversion_C>G","autre"))))))))))))
+
+```
+
+Représentation des transitions/transversions
+```{r}
+nb_substitutions = vcf_snv %>% group_by (gene, vcf, type_substitutions) %>% summarise(nombre_substitutions=n())
+names(nb_substitutions)[1]="nom_gene"
+names(nb_substitutions)[2]="vcf"
+names(nb_substitutions)[3]="type_substitutions"
+names(nb_substitutions)[4]="nombre_substitutions"
+```
+
+## Représentation en barplot du nombre et des types de substitutions par gènes
+```{r}
+fig18 = ggplot(nb_substitutions, aes(fill = nom_gene, y = nombre_substitutions, x = type_substitutions)) +
+  geom_bar(position = "stack", stat = "identity") +
+  labs(title = "Nombre et type de substitutions par gène", x = "Type de substitutions", y = "Nombre de substitutions") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+fig18
+```
+
+## Représentation en barplot du nombre et des types de substitutions par VCF
+```{r}
+fig19 = ggplot(nb_substitutions, aes(fill = vcf, y = nombre_substitutions, x = type_substitutions)) +
+  geom_bar(position = "dodge", stat = "identity")+
+  labs(title = "Nombre de substitutions par type et par VCF", x = "Type de substitutions", y = "Nombre de substitutions")+
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+fig19
+```
+
+Création d'un nouveau dataframe avec 2 colonnes séparées : type de substitutions et ref>alt
+```{r}
+#copie du dataframe
+nb_substitutions2 = nb_substitutions
+#séparation des types de transitions/transversions
+nb_substitutions2 = nb_substitutions2 %>% separate(type_substitutions, c("type", "ref>alt"), "_")
+```
+
+## Représentation en barplot du nombre de transitions/transversions par VCF
+```{r}
+fig20 = ggplot(nb_substitutions2, aes(fill = type, y = nombre_substitutions, x = vcf)) +
+  geom_bar(position = "dodge", stat = "identity") +
+  labs(title = "Nombre de substitutions par type et par VCF", x = "Type de substitutions", y = "Nombre de substitutions") +
+  theme_minimal()
+
+fig20
+```
+
+## Représentation en barplot du nombre de transitions/transversions par gènes
+```{r}
+fig21 = ggplot(nb_substitutions2, aes(fill = type, y = nombre_substitutions, x = nom_gene)) +
+  geom_bar(position = "dodge", stat = "identity") +
+  labs(title = "Nombre de substitutions par type et par gènes", x = "Type de substitutions", y = "Nombre de substitutions") +
+  theme_minimal()
+
+fig21
+```
+## Exploration de la fréquence allélique 
+```{r}
+vcf_12x_select2 =  vcf_12x %>% select(1,2,4,5,10)
+vcf_24x_select2 =  vcf_24x %>% select(1,2,4,5,10)
+vcf_40x_select2 =  vcf_40x %>% select(1,2,4,5,10)
+vcf_ref_select2 =  vcf_ref %>% select(1,2,4,5,10)
+```
+
+## Création d'une colonne nom du vcf
+```{r}
+vcf_12x_select2$vcf = c("vcf_12x")
+vcf_24x_select2$vcf = c("vcf_24x")
+vcf_40x_select2$vcf = c("vcf_40x")
+vcf_ref_select2$vcf = c("vcf_ref")
+```
+
+Changement de "1" en "chr1" du vcf ref
+```{r}
+vcf_ref_select2$V1 = sub("1", "chr1", vcf_ref_select$V1)
+vcf_ref_select2$V1 = sub("4", "chr4", vcf_ref_select$V1)
+vcf_ref_select2$V1 = sub("8", "chr8", vcf_ref_select$V1)
+```
+
+## Joindre les lignes des vcf d'elodie
+```{r}
+vcf_bind = rbind(vcf_12x_select2,vcf_24x_select2,vcf_40x_select2)
+names(vcf_bind)[1]="chromosome"
+names(vcf_bind)[2]="position"
+names(vcf_bind)[3]="ref"
+names(vcf_bind)[4]="alt"
+names(vcf_bind)[5]="format"
+```
+
+## Séparation du champs format 
+```{r}
+vcf_bind = vcf_bind %>% separate(format, c("GT", "AD", "DP", "GQ", "PL"), ":")
+vcf_bind = vcf_bind %>% separate(AD, c("ADref1", "ADalt1"), ",")
+```
+
+## Formatage du vcf ref
+```{r}
+names(vcf_ref_select2)[1]="chromosome"
+names(vcf_ref_select2)[2]="position"
+names(vcf_ref_select2)[3]="ref"
+names(vcf_ref_select2)[4]="alt"
+names(vcf_ref_select2)[5]="format"
+vcf_ref_select2 = vcf_ref_select2 %>% separate (format, c("GT", "PS", "DP", "ADALL", "AD", "GQ"), ":")
+vcf_ref_select2 = vcf_ref_select2 %>% separate (ADALL, c("ADref1", "ADalt1"), ",")
+vcf_ref_select2 = vcf_ref_select2 %>% separate (AD, c("ADref2", "ADalt2"), ",")
+```
+
+## Suppression de la colonne PS
+```{r}
+vcf_ref_select2 = subset(vcf_ref_select2, select = -PS)
+vcf_bind = subset(vcf_bind, select= -PL)
+```
+
+```{r}
+# nouvel ordre colonne ref_select
+new_col2 = c("chromosome", "position", "ref", "alt", "GT", "DP", "ADref1", "ADalt1", "GQ", "vcf", "ADref2", "ADalt2")
+vcf_ref_select2 = vcf_ref_select2[new_col2]
+```
+
+```{r}
+vcf_bind = bind_rows(vcf_bind, vcf_ref_select2)
+```
+
+```{r}
+vcf_bind$vaf1 = round((as.numeric(vcf_bind$ADalt1) / as.numeric(vcf_bind$DP))*100, 1)
+vcf_bind$vaf2 = round((as.numeric(vcf_bind$ADalt2) / as.numeric(vcf_bind$DP))*100, 1)
+min(vcf_bind$vaf1)
+min(vcf_bind$vaf2, na.rm=TRUE)
+```
+```{r}
+vcf_bind$catvaf1 = 
+  ifelse(vcf_bind$vaf1 >= 0 & vcf_bind$vaf1 <10, "vaf_0_10",
+    ifelse(vcf_bind$vaf1 >= 10 & vcf_bind$vaf1 <20, "vaf_10_20",
+                          ifelse(vcf_bind$vaf1 >=20  & vcf_bind$vaf1 <30, "vaf_20_30",
+                                 ifelse(vcf_bind$vaf1 >=30  & vcf_bind$vaf1 <40, "vaf_30_40",
+                                      ifelse(vcf_bind$vaf1 >=40  & vcf_bind$vaf1 <50, "vaf_30_40", 
+                                             ifelse(vcf_bind$vaf1 >=50  & vcf_bind$vaf1 <60, "vaf_50_60",
+                                                    ifelse(vcf_bind$vaf1 >=60  & vcf_bind$vaf1 <70, "vaf_60_70",
+                                                           ifelse(vcf_bind$vaf1 >=70  & vcf_bind$vaf1 <80, "vaf_70_80",
+                                                                  ifelse(vcf_bind$vaf1 >=80  & vcf_bind$vaf1 <90, "vaf_80_90",
+                                                                         ifelse(vcf_bind$vaf1 >=90  & vcf_bind$vaf1 <=100, "vaf_90_100",
+                                             "autre"))))))))))
+```
+
+```{r}
+vcf_bind = tidyr::unite(vcf_bind, variants, chromosome, position, ref, alt, sep = "_", remove = FALSE)
+```
+
+```{r}
+vcf_bind_nb = vcf_bind %>% group_by(vcf_bind$catvaf1, vcf_bind$vcf) %>% count(vcf_bind$catvaf1)
+```
+
+```{r}
+names(vcf_bind_nb)[1]="catvaf"
+names(vcf_bind_nb)[2]="vcf"
+names(vcf_bind_nb)[3]="nombrevariants"
+```
+
+```{r}
+fig22 = ggplot(vcf_bind_nb, aes(x=catvaf, y=nombrevariants, fill=vcf))+
+  geom_bar(position="dodge", stat="identity")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  theme_classic()
+fig22
+```
+```{r}
+vcf_bind$catvaf2 = 
+  ifelse(vcf_bind$vaf2 >= 0 & vcf_bind$vaf2 <10, "vaf_0_10",
+         ifelse(vcf_bind$vaf2 >= 10 & vcf_bind$vaf2 <20, "vaf_10_20",
+                ifelse(vcf_bind$vaf2 >=20  & vcf_bind$vaf2 <30, "vaf_20_30",
+                       ifelse(vcf_bind$vaf2 >=30  & vcf_bind$vaf2 <40, "vaf_30_40",
+                              ifelse(vcf_bind$vaf2 >=40  & vcf_bind$vaf2 <50, "vaf_30_40", 
+                                     ifelse(vcf_bind$vaf2 >=50  & vcf_bind$vaf2 <60, "vaf_50_60",
+                                            ifelse(vcf_bind$vaf2 >=60  & vcf_bind$vaf2 <70, "vaf_60_70",
+                                                   ifelse(vcf_bind$vaf2 >=70  & vcf_bind$vaf2 <80, "vaf_70_80",
+                                                          ifelse(vcf_bind$vaf2 >=80  & vcf_bind$vaf2 <90, "vaf_80_90",
+                                                                 ifelse(vcf_bind$vaf2 >=90  & vcf_bind$vaf2 <=100, "vaf_90_100",
+                                                                        "autre"))))))))))
+```
+
+```{r}
+vcf_bind_nb2 = vcf_bind %>% group_by(vcf_bind$catvaf2, vcf_bind$catvaf1, vcf_bind$vcf) %>% count(vcf_bind$catvaf2)
+names(vcf_bind_nb2)[1]="catvaf2"
+names(vcf_bind_nb2)[2]="catvaf1"
+names(vcf_bind_nb2)[3]="vcf"
+names(vcf_bind_nb2)[4]="nombre"
+```
+
+```{r}
+#extraction des 16 premières lignes dans un nv df
+vaf_ref = head(vcf_bind_nb2,16)
+
+#suppression des 16 premières lignes du df vcf_bind_nb2
+vcf_bind_nb2 <- vcf_bind_nb2[-(1:16), ]
+```
+
+```{r}
+#suppression colonne catvaf1 ds vaf_ref
+vaf_ref = subset(vaf_ref, select = -catvaf1)
+
+#suppression colonne catvaf2 dans vcf_bind_nb2
+vcf_bind_nb2 = subset(vcf_bind_nb2, select = -catvaf2)
+```
+
+```{r}
+names(vcf_bind_nb2)[1]="catvaf2"
+vcf_bind_nb2 = rbind(vaf_ref,vcf_bind_nb2)
+
+fig23 = ggplot(vcf_bind_nb2, aes(x=catvaf2, y=nombre, fill=vcf))+
+  geom_bar(position="dodge", stat="identity")+
+  theme_classic()
+fig23
+```
+
+##Boxplot DP
+
+```{r, fig.width=20, fig.height=20}
+vcf_bind$DP = as.numeric(vcf_bind$DP)
+fig24 = ggplot(vcf_bind, aes(x = DP, y = vcf)) + geom_boxplot() +
+  theme_classic() + 
+  labs(x = "Profondeur de lecture", y = "VCF", title = "Représentation en boxplot de la profondeur de lecture par VCF") + 
+  theme(plot.title = element_text(hjust = 0.5, size=12, face="bold"), plot.subtitle = element_text(hjust = 0.5))
+fig24
+```
+
+```{r}
+vcf_bind_12x_24x_40x = filter(vcf_bind, vcf %in% c("vcf_12x", "vcf_24x", "vcf_40x"))
+fig24bis = ggplot(vcf_bind_12x_24x_40x, aes(x = DP, y = vcf)) + geom_boxplot(aes(fill=chromosome)) + theme_classic() + 
+  labs(x = "Profondeur de lecture", y = "VCF", title = "Représentation en boxplot de la profondeur de lecture par VCF") + 
+  theme(plot.title = element_text(hjust = 0.5, size=12, face="bold"), plot.subtitle = element_text(hjust = 0.5))
+fig24bis
+```
+
+```{r}
+mean_dp = vcf_bind %>% group_by(vcf) %>% summarise(mean_DP = mean(DP))
+
+fig25 = ggplot(mean_dp, aes(x = vcf, y = mean_DP)) +
+  geom_bar(stat = "identity", fill = "skyblue", width = 0.5) +
+  labs(x = "VCF", y = "Valeur moyenne de DP", title = "Représentation des valeurs moyennes de DP par VCF") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+print(fig25)
+```
+
+```{r}
+count_dp = vcf_bind %>% group_by(vcf,DP) %>% summarise(n=n())
+count_12x = filter(count_dp, vcf == "vcf_12x")
+count_24x = filter(count_dp, vcf == "vcf_24x")
+count_40x = filter(count_dp, vcf == "vcf_40x")
+count_ref = filter(count_dp, vcf == "vcf_ref")
+```
+```{r}
+fig26 = ggplot(count_12x, aes(x = DP)) +
+  geom_histogram(aes(y=n), stat = "identity", fill = "#2b8cbe") +
+  labs(x = "DP", y = "Occurrences", title = "Histogramme DP vcf_12x") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(hjust = 1)) +
+  geom_density(color="#fdae6b")
+print(fig26)
+```
+
+
+
+```{r}
+fig27 = ggplot(count_24x, aes(x = DP, y = n)) +
+  geom_histogram(stat = "identity", fill = "#31a354") +
+  labs(x = "DP", title = "Histogramme DP vcf_24x") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(hjust = 1)) 
+
+print(fig27)
+```
+
+```{r}
+fig28 = ggplot(count_40x, aes(x = DP, y = n)) +
+  geom_histogram(stat = "identity", fill = "#d95f0e") +
+  labs(x = "DP", title = "Histogramme DP vcf_40x") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(hjust = 1)) 
+
+print(fig28)
+```
+
+```{r}
+fig29 = ggplot(count_ref, aes(x = DP, y = n)) +
+  geom_histogram(stat = "identity", fill = "#756bb1") +
+  labs(x = "DP", title = "Histogramme DP vcf_ref") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(hjust = 0)) 
+
+print(fig29)
+```
+
+```{r}
+plot_grid(fig26, fig27, fig28, fig29)
+```
+
+
+## Hap.py métriques qualité
+```{r}
+happy_12x_summury = read.table("/home/elodie/Documents/Analysis/Happy_12x/Happy_12x/ref-12x.summary.csv", header=TRUE, sep=',')
+happy_24x_summury = read.table("/home/elodie/Documents/Analysis/Happy_24x/Happy_24x/ref-24x.summary.csv", header=TRUE, sep=',')
+happy_40x_summury = read.table("/home/elodie/Documents/Analysis/Happy_40x/Happy_40x/ref-40x.summary.csv", header=TRUE, sep=',')
+
+happy_12x_extended = read.table("/home/elodie/Documents/Analysis/Happy_12x/Happy_12x/ref-12x.extended.csv", header=TRUE, sep=',')
+happy_24x_extended = read.table("/home/elodie/Documents/Analysis/Happy_24x/Happy_24x/ref-24x.extended.csv", header=TRUE, sep=',')
+happy_40x_extended = read.table("/home/elodie/Documents/Analysis/Happy_40x/Happy_40x/ref-40x.extended.csv", header=TRUE, sep=',')
+```
+
+```{r}
+read_single = function(x) {
+  nx = strsplit(x, "\\:")[[1]]
+  
+  if(length(nx) == 1) {
+    name = basename(file_path_sans_ext(x))
+  } else {
+    x = nx[1]
+    name = nx[2]
+  }
+  
+  cat(sprintf("Reading %s as %s\n", x, name))
+  
+  #création d'une liste de dataframe
+all_results = list()
+  print(all_results)
+  all_results$roc_data_snp_all = read.csv(paste(x, "roc.Locations.SNP", "csv", "gz", sep="."))
+  all_results$roc_data_indel_all = read.csv(paste(x, "roc.Locations.INDEL", "csv", "gz", sep="."))
+  all_results$roc_data_snp_pass = read.csv(paste(x, "roc.Locations.SNP.PASS", "csv", "gz", sep="."))
+  all_results$roc_data_indel_pass = read.csv(paste(x, "roc.Locations.INDEL.PASS", "csv", "gz", sep="."))
+  print(all_results)
+  sel_snp_file = paste(x, "roc.Locations.SNP.SEL", "csv", "gz", sep=".")
+  
+  # if we have a selectively-filtered ROC, don't show "PASS" ROC
+  if(file.exists(sel_snp_file)) {
+    all_results$roc_data_snp_sel = read.csv(sel_snp_file)
+  } else {
+    all_results$roc_data_snp_sel = all_results$roc_data_snp_pass
+  }
+  
+  all_results$roc_data_snp_all = head(subset(all_results$roc_data_snp_all,
+                                             QQ == min(all_results$roc_data_snp_all["QQ"])),
+                                      n=1)
+  print(all_results$roc_data_snp_all)
+  all_results$roc_data_snp_pass = head(subset(all_results$roc_data_snp_pass,
+                                              QQ == min(all_results$roc_data_snp_pass["QQ"])),
+                                       n=1)
+  sel_min = head(subset(all_results$roc_data_snp_sel,
+                        QQ == min(all_results$roc_data_snp_sel["QQ"])),
+                 n=1)
+  
+  all_results$roc_connector_snp =
+    rbind(all_results$roc_data_snp_all, sel_min)
+  all_results$roc_connector_snp$Filter = "CONN"
+  print(all_results$roc_connector_snp)
+  all_results$roc_data_snp_sel$Filter = "ROC"
+  print(all_results$roc_data_snp_sel)
+  sel_indel_file = paste(x, "roc.Locations.INDEL.SEL", "csv", "gz", sep=".")
+  if(file.exists(sel_indel_file)) {
+    all_results$roc_data_indel_sel = read.csv(sel_indel_file)
+  } else {
+    # use PASS ROC if no SEL ROC present
+    all_results$roc_data_indel_sel = all_results$roc_data_indel_pass
+  }
+  
+  # just keep single ALL and PASS point
+  all_results$roc_data_indel_all = head(subset(all_results$roc_data_indel_all,
+                                               QQ == min(all_results$roc_data_indel_all["QQ"])),
+                                        n=1)
+  all_results$roc_data_indel_pass = head(subset(all_results$roc_data_indel_pass,
+                                                QQ == min(all_results$roc_data_indel_pass["QQ"])),
+                                         n=1)
+  
+  sel_min = head(subset(all_results$roc_data_indel_sel,
+                        QQ == min(all_results$roc_data_indel_sel["QQ"])),
+                 n=1)
+  
+  all_results$roc_connector_indel =
+    rbind(all_results$roc_data_indel_all, sel_min)
+  all_results$roc_connector_indel$Filter = "CONN"
+  all_results$roc_data_indel_sel$Filter = "ROC"
+  
+  result = do.call(rbind, all_results)
+  row.names(result) = NULL
+  print(class(result))
+  
+  result$filename = x
+  result$name = name
+  result$igroup = paste(result$name,
+                        result$Filter,
+                        result$Type)
+  return(result)
+}
+```
+
+```{r include=FALSE} 
+vcf12x = read_single("/home/elodie/Documents/Analysis/Happy_12x/Happy_12x/ref-12x")
+vcf24x = read_single("/home/elodie/Documents/Analysis/Happy_24x/Happy_24x/ref-24x")
+vcf40x = read_single("/home/elodie/Documents/Analysis/Happy_40x/Happy_40x/ref-40x")
+```
+
+```{r}
+#head(vcf12x)
+
+# Plot P/R curves
+plot_data = function(pdata, is.PR=FALSE) {
+  # precision / recall curve
+  if(is.PR) {
+    xaxis = "METRIC.Recall"
+    yaxis = "METRIC.Precision"
+  } else {
+    # approximate ROC-style curve (FPR is not correct)
+    xaxis = "FPR"
+    yaxis = "TPR"
+    pdata$FPR = pdata$QUERY.FP / (pdata$QUERY.TOTAL - pdata$QUERY.UNK)
+    pdata$TPR = pdata$TRUTH.TP / (pdata$TRUTH.TP + pdata$TRUTH.FN)
+    cc = complete.cases(pdata[, c(xaxis, yaxis)])
+    print(pdata)
+    pdata = pdata[cc, ]
+    print(pdata)
+  }
+  
+  plt = ggplot(pdata, aes_string(x=xaxis, y=yaxis, color="name")) + 
+    labs(title = paste("Courbe ROC", pdata$Type)[[1]])
+  facet_wrap(~Type)
+  
+  # ROC lines
+  plt = plt +
+    geom_line(data = subset(pdata, Filter == "ROC"),
+              mapping=aes(group=igroup),
+              size=1.5,
+              linetype=3)
+  
+  # Connector between ALL and start of ROC
+  plt = plt +
+    geom_line(data = subset(pdata, Filter == "CONN"),
+              mapping=aes(group=igroup),
+              size=1.5,
+              linetype=4)
+  
+  plt = plt +
+    geom_point(data = subset(pdata, Filter %in% c("CONN")),
+               mapping=aes(group=igroup),
+               size=8)
+  
+  plt = plt +
+    geom_point(data = subset(pdata, Filter %in% c("PASS", "ALL")),
+               mapping=aes(shape=Filter, group=igroup),
+               size=8)
+  
+  xl_min = max(0,
+               min(subset(pdata, Filter %in% c("PASS", "ALL"))[[xaxis]]) - 0.02)
+  xl_max = min(1.0,
+               max(subset(pdata, Filter %in% c("PASS", "ALL"))[[xaxis]]) + 0.02)
+  yl_min = max(0,
+               min(subset(pdata, Filter %in% c("PASS", "ALL"))[[yaxis]]) - 0.01)
+  yl_max = min(1.0,
+               max(subset(pdata, Filter %in% c("PASS", "ALL"))[[yaxis]]) + 0.01)
+  
+  plt = plt +
+    scale_color_brewer("", palette="Set1") +
+    #xlim(c(xl_min, xl_max)) +
+    xlim(c(0, 1)) +
+    #ylim(c(yl_min, yl_max)) +
+    ylim(c(0, 1)) +
+    theme_bw(base_size=18)
+  
+  return(plt)
+}
+```
+
+```{r}
+vcf12x_indel = filter(vcf12x, Type=="INDEL")
+vcf12x_snp = filter(vcf12x, Type=="SNP")
+```
+
+```{r}
+#plot snp_12x
+#plot1 = plot_data (vcf12x_snp, is.PR=TRUE)
+#plot1
+```
+
+```{r}
+#plot indel_12x
+#plot2 = plot_data (vcf12x_indel, is.PR=TRUE)
+#plot2
+```
+
+```{r}
+#plot indel+snp_12x
+#plot3 = plot_data (vcf12x, is.PR=TRUE)
+#plot3
+```
+
+```{r}
+vcf24x_indel = filter(vcf24x, Type=="INDEL")
+vcf24x_snp = filter(vcf24x, Type=="SNP")
+```
+
+```{r}
+vcf40x_indel = filter(vcf40x, Type=="INDEL")
+vcf40x_snp = filter(vcf40x, Type=="SNP")
+```
+
+```{r}
+roc_snp = rbind(vcf12x_snp, vcf24x_snp, vcf40x_snp)
+```
+
+```{r}
+plot4 = plot_data(roc_snp, is.PR=TRUE)
+plot4
+```
+```{r}
+roc_indel = rbind(vcf12x_indel, vcf24x_indel, vcf40x_indel)
+plot5 = plot_data(roc_indel, is.PR=TRUE)
+plot5
+```
+```{r}
+plot_grid(plot4, plot5, nrow=2, ncol=1)
+```
