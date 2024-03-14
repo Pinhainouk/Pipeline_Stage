@@ -1,0 +1,86 @@
+---
+title: "Analyses des VCF en sortie du pipeline"
+author: "Elodie PARIS"
+date: "2024-03-14"
+output: html_document
+---
+
+## Import des packages
+```{r, message = FALSE}
+rm(list=ls())
+library('dplyr')
+library('tidyr')
+library('VennDiagram')
+library('grid')
+library('futile.logger')
+library("ggplot2")
+library("gplots")
+library('plotly')
+library('tools')
+library('cowplot')
+```
+
+## Import des VCF
+```{r}
+vcf_12x = read.table("/home/elodie/Documents/Analysis/gold_12x_on_data_elodie_filtervarianttranches_2D_decomposed_normalized_uniq.vcf")
+vcf_24x = read.table("/home/elodie/Documents/Analysis/gold_24x_on_data_elodie_filtervarianttranches_2D_decomposed_normalized_uniq.vcf")
+vcf_40x = read.table("/home/elodie/Documents/Analysis/gold_40x_on_data_elodie_filtervarianttranches_2D_decomposed_normalized_uniq.vcf")
+vcf_ref = read.table("/home/elodie/Documents/Elodie/Datas_ismael_ref/gold_on_data_elodie_ismael_decomposed_normalize_uniq.vcf")
+```
+
+```{r}
+# Changement de "1" en "chr1" du vcf ref
+vcf_ref$V1 = sub("1", "chr1", vcf_ref$V1)
+vcf_ref$V1 = sub("4", "chr4", vcf_ref$V1)
+vcf_ref$V1 = sub("8", "chr8", vcf_ref$V1)
+```
+
+
+```{r}
+# Sélection des colonnes à analyser
+# concaténer les colonnes chr_position_rel_alt
+# ajout d'un ID
+# ajout d'une colonne gène
+# ajout d'une colonne type de variants
+# ajout d'une colonne nom du vcf
+formatage = function(df, nom_df){
+
+df_select = df %>% select(V1,V2,V4,V5,V10) %>% rename(chromosome=V1, position=V2, ref=V4, alt=V5, format=V10)
+
+df_concat = tidyr::unite(df_select, col='variants', c('chromosome','position','ref','alt'), sep = "_", remove = FALSE)
+
+df_concat = df_concat %>% mutate(Id = 1:n())
+
+df_concat$gene = ifelse(df_concat$chromosome == "chr4", "EPHA5",
+  ifelse(df_concat$chromosome =="chr1", "UTS2",
+  ifelse(df_concat$chromosome =="chr8", "LPL", "autre")))
+
+df_concat$type = ifelse(df_concat$alt == "*", "undetermined",
+  ifelse (nchar(df_concat$ref)==1 & nchar(df_concat$alt)==1, "SNV",
+  ifelse(nchar(df_concat$ref) >= 2 & nchar(df_concat$alt) == 1, "deletion",
+  ifelse(nchar(df_concat$ref) ==1 & nchar(df_concat$alt) >= 2, "insertion","autre"))))
+
+df_concat$vcf = nom_df
+return(df_concat)
+}
+```
+
+```{r}
+vcf_12x = formatage(vcf_12x, "vcf_12x")
+vcf_24x = formatage(vcf_24x, "vcf_24x")
+vcf_40x = formatage(vcf_40x, "vcf_40x")
+vcf_ref = formatage(vcf_ref, "vcf_ref")
+```
+
+```{r}
+vcf_12x_24x_40x = rbind(vcf_12x,vcf_24x,vcf_40x)
+vcf_all = rbind(vcf_12x,vcf_24x,vcf_40x,vcf_ref)
+```
+
+```{r}
+formatage_dp = function(df){
+  df_format = df %>% separate(format, c("GT", "AD", "DP", "GQ", "PL"), ":")
+  return(df_format)
+}
+```
+
