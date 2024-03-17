@@ -1,12 +1,14 @@
 ---
 title: "Analyses des VCF en sortie du pipeline"
 author: "Elodie PARIS"
-date: "2024-03-14"
+date: "2024-03-17"
 output: html_document
+code_folding: hide
 ---
 
 ## Import des packages
-```{r, message = FALSE}
+
+```{r, message=FALSE}
 rm(list=ls())
 library('dplyr')
 library('tidyr')
@@ -18,9 +20,12 @@ library("gplots")
 library('plotly')
 library('tools')
 library('cowplot')
+library('UpSetR')
 ```
 
 ## Import des VCF
+
+Import des 3 vcf obtenus après lancement du pipeline (vcf_12x, vcf_24x, vcf40x) et import du vcf de référence (vcf_ref).
 ```{r}
 vcf_12x = read.table("/home/elodie/Documents/Analysis/gold_12x_on_data_elodie_filtervarianttranches_2D_decomposed_normalized_uniq.vcf")
 vcf_24x = read.table("/home/elodie/Documents/Analysis/gold_24x_on_data_elodie_filtervarianttranches_2D_decomposed_normalized_uniq.vcf")
@@ -28,7 +33,10 @@ vcf_40x = read.table("/home/elodie/Documents/Analysis/gold_40x_on_data_elodie_fi
 vcf_ref = read.table("/home/elodie/Documents/Elodie/Datas_ismael_ref/gold_on_data_elodie_ismael_decomposed_normalize_uniq.vcf")
 ```
 
-```{r}
+
+
+```{r, include=FALSE}
+## Formatage des données
 # Changement de "1" en "chr1" du vcf ref
 vcf_ref$V1 = sub("1", "chr1", vcf_ref$V1)
 vcf_ref$V1 = sub("4", "chr4", vcf_ref$V1)
@@ -36,7 +44,7 @@ vcf_ref$V1 = sub("8", "chr8", vcf_ref$V1)
 ```
 
 
-```{r}
+```{r, include=FALSE}
 # Sélection des colonnes à analyser
 # concaténer les colonnes chr_position_rel_alt
 # ajout d'un ID
@@ -65,22 +73,640 @@ return(df_concat)
 }
 ```
 
-```{r}
+```{r, include=FALSE}
 vcf_12x = formatage(vcf_12x, "vcf_12x")
 vcf_24x = formatage(vcf_24x, "vcf_24x")
 vcf_40x = formatage(vcf_40x, "vcf_40x")
 vcf_ref = formatage(vcf_ref, "vcf_ref")
 ```
 
-```{r}
+```{r, include=FALSE}
 vcf_12x_24x_40x = rbind(vcf_12x,vcf_24x,vcf_40x)
 vcf_all = rbind(vcf_12x,vcf_24x,vcf_40x,vcf_ref)
 ```
 
-```{r}
+```{r, include=FALSE}
 formatage_dp = function(df){
   df_format = df %>% separate(format, c("GT", "AD", "DP", "GQ", "PL"), ":")
+  df_format = df_format %>% separate(AD, c("ADref", "ADalt"), ",")
   return(df_format)
 }
+```
+
+
+```{r, include=FALSE}
+vcf_12x_24x_40x = formatage_dp(vcf_12x_24x_40x)
+```
+
+# Exploration des VCF et des variants
+
+## Nombre et type de variants par VCF
+
+```{r, include=FALSE}
+nombre_variants = data_frame(vcf_all %>% group_by (vcf_all$vcf) %>% count(vcf_all$type))
+#Renommage des colonnes du nouveau df
+names(nombre_variants)[1] = "vcf"
+names(nombre_variants)[2] = "type"
+names(nombre_variants)[3] = "nombre"
+```
+
+```{r}
+plot1 = ggplot(nombre_variants, aes(fill=type, y=vcf, x=nombre)) +
+  geom_bar(position = "stack", stat = "identity") + 
+  scale_fill_manual(values = c("#bebada", "#ffffb3", "#8dd3c7", "#170f0f")) +
+  labs(fill = "Type de variants", x = "Nombre de variants", y = "VCF") +
+  theme(panel.grid = element_blank(), plot.title = element_text(hjust = 0.5)) + 
+  labs(title = "Nombre et type de variant par VCF") 
+ggplotly(plot1)
+```
+
+La distribution des types de variants semble équivalente pour chaque VCF. Cependant dans les 3 VCF générés par le pipeline on trouve des variants "Undetermined" mais pas dans le VCF de référence. 
+
+Que sont les Undetermined non retrouvés dans le VCF de référence ?
+
+```{r}
+undetermined = vcf_all %>% filter(type == "undetermined")
+print(undetermined)
+```
+Variants avec * en alt lié au vt décompose ?
+
+```{r}
+pos66388036 = vcf_all %>% filter(variants == "chr4_66388034_GTA_G")
+print(pos66388036)
+pos66388036bis = vcf_all %>% filter(variants == "chr4_66388036_A_G")
+print(pos66388036bis)
+```
+A cette position délétion de 2 bases (66388035+66388036) bien détectée dans les 4 VCF
+Substitution de A>G en 66388036 dans le VCF_12x (comme peu de reads, variant caller se trompe? Faux positif?)
+
+```{r}
+pos66440407 = vcf_all %>% filter(position == 66440407)
+print(pos66440407)
+```
+Zone avec des reads ayant des dététions différentes qui se chevauchent dans les 4 BAM. Le VCF de référence n'appelle pas de variants dans cette zone. Zone difficile pour le variant caller, faire appel à un variant caller spécialiste des délétions?
+
+```{r}
+pos66214417 = vcf_all %>% filter (position == 66214417)
+print(pos66214417)
+pos66214413 = vcf_all %>% filter (position == 66214413)
+print(pos66214413)
+```
+Délétion de 4 bases de 66214413 à 66214417 vu dans les 4 BAM mais uniquement appelée dans VCF 24x et 40x. Non appelé dans le VCF de référence.
+Subtitution en 66214417 aussi un A>T vu dans les 4 BAM mais uniquement appelée dans le VCF 40x. Non appelé dans le VCF référence.
+
+```{r}
+pos66473213 = vcf_all %>% filter (position == 66473213)
+print(pos66473213)
+```
+Dans le VCF de référence en position 66473209 à 66473213 : délétion de 4 bases appelée mais peu de reads avec la délétion et beaucoup plus de reads avec substitutions de A>C en 66473213. Substitutions appelée uniquement dans VCF 24x et 40x.
+Dans les zones où il y a des délétions et substitutions, le variant caller rencontre des difficultés?
+
+## Nombre de variants par gène et par VCF
+
+```{r, include=FALSE}
+nombre_variants_par_gene = data_frame(vcf_all %>% group_by (vcf_all$gene, vcf_all$vcf) %>% count(vcf_all$type))
+names(nombre_variants_par_gene)[1] = "gene"
+names(nombre_variants_par_gene)[2] = "vcf"
+names(nombre_variants_par_gene)[3] = "type"
+names(nombre_variants_par_gene)[4] = "nombre"
+```
+
+```{r}
+plot2 = ggplot(nombre_variants_par_gene, aes(fill=gene, y=vcf, x=nombre)) +
+  geom_bar(position="stack", stat="identity") +
+  scale_fill_manual(values = c("#fdc086", "#91bfdb", "#b2df8a")) +
+  labs(fill = "Nom des gènes", x = "Nombre de variants", y = "VCF") + 
+  theme(panel.grid = element_blank(),plot.title = element_text(hjust = 0.5)) + 
+  labs(title = "Nombre de variants par gène et par VCF") 
+ggplotly(plot2)
+```
+Le nombre de variants est identique dans chaque VCF pour les gènes UTS2 et LPL mais le nombre varie pour le plus grand gène UPHA5.
+
+## Nombre et type de variants par gène et par VCF
+
+```{r}
+nombre_variants_par_gene$vcf_nom_genes = paste(nombre_variants_par_gene$vcf, nombre_variants_par_gene$gene, sep="_")
+
+plot3 = ggplot(nombre_variants_par_gene, aes(fill=type, y=vcf_nom_genes, x=nombre)) +
+  geom_bar(position = position_fill(reverse=FALSE), stat="identity") +
+  scale_fill_manual(values = c("#bebada", "#ffffb3", "#8dd3c7", "#170f0f")) +
+  labs(title = "Nombre de variants par gène, par VCF et par type de variant") +
+  labs(fill = "Type de variants", x = "Nombre de variants", y = "VCF") + 
+  theme(panel.grid = element_blank(), plot.title = element_text(hjust = 0.5))
+  
+ggplotly(plot3)
+```
+
+La répartition des types de variants par gène et par VCF est concordante. 
+Aucune insertion dans UTS2 dans les 4 VCF.
+
+
+
+```{r, include=FALSE}
+## Formatage: ajout de la taille des insertions délétions
+vcf_all$taille_delins <- ifelse(nchar(vcf_all$ref) == 1 & nchar(vcf_all$alt) == 1 & vcf_all$type == "SNV", 
+                                0,
+                                ifelse(nchar(vcf_all$ref) > nchar(vcf_all$alt) & vcf_all$type == "deletion", 
+                                       abs(nchar(vcf_all$ref) - nchar(vcf_all$alt)),
+                                       ifelse(nchar(vcf_all$alt) > nchar(vcf_all$ref) & vcf_all$type == "insertion", 
+                                              abs(nchar(vcf_all$alt) - nchar(vcf_all$ref)),
+                                              NA)))
+```
+
+
+
+```{r, include=FALSE}
+## Formatage: ajout du type de SNV
+vcf_all$type_snv = ifelse (vcf_all$ref == "A" & vcf_all$alt == "G" & vcf_all$type == "SNV", "transition_A>G",
+                                     ifelse (vcf_all$ref == "G" & vcf_all$alt == "A" & vcf_all$type == "SNV", "transition_G>A",
+                                            ifelse(vcf_all$ref == "C" & vcf_all$alt == "T" & vcf_all$type == "SNV", "transition_C>T",
+                                                   ifelse(vcf_all$ref == "T" & vcf_all$alt == "C" & vcf_all$type == "SNV", "transition_T>C",
+                                                          ifelse(vcf_all$ref == "A" & vcf_all$alt == "C" & vcf_all$type == "SNV", "transversion_A>C",
+                                                                 ifelse(vcf_all$ref == "C" & vcf_all$alt == "A" & vcf_all$type == "SNV", "transversion_C>A",
+                                                                        ifelse(vcf_all$ref == "G" & vcf_all$alt == "T" & vcf_all$type == "SNV", "transversion_G>T",
+                                                                               ifelse(vcf_all$ref == "T" & vcf_all$alt == "G" & vcf_all$type == "SNV", "transversion_T>G",
+                                                                                      ifelse(vcf_all$ref == "A" & vcf_all$alt == "T" & vcf_all$type == "SNV", "transversion_A>T",
+                                                                                             ifelse(vcf_all$ref == "T" & vcf_all$alt == "A" & vcf_all$type == "SNV", "transversion_T>A",
+                                                                                                    ifelse(vcf_all$ref == "G" & vcf_all$alt == "C" & vcf_all$type == "SNV", "transversion_G>C",
+                                                                                                           ifelse(vcf_all$ref == "C" & vcf_all$alt == "G" & vcf_all$type == "SNV", "transversion_C>G", NA))))))))))))
+```
+
+```{r, include=FALSE}
+nombre_type_snv = vcf_all %>% group_by (gene, vcf, type_snv) %>% summarise(nombre_type_snv=n())
+names(nombre_type_snv)[1]="gene"
+names(nombre_type_snv)[2]="vcf"
+names(nombre_type_snv)[3]="type_snv"
+names(nombre_type_snv)[4]="nombre"
+nombre_type_snv = nombre_type_snv %>% separate(type_snv, c("type", "ref>alt"), "_", remove = FALSE)
+nombre_type_snv <- nombre_type_snv %>% mutate(vcf_gene = paste(vcf, gene, sep = "_"))
+```
+
+## Exploration des SNV
+
+## Nombre et type de SNV par VCF
+
+```{r}
+plot4 = ggplot(nombre_type_snv[!is.na(nombre_type_snv$type), ], aes(fill = type, y = vcf, x = nombre))+
+  geom_bar(position = position_fill(reverse=FALSE), stat="identity") +
+  scale_fill_manual(values = c("#fc9272", "#9ebcda")) +
+  labs(title = "Type de SNV par VCF", x = "Type de substitutions", y = "Nombre de substitutions") +
+  labs(fill = "Type de SNV") +
+  theme(panel.grid = element_blank(), plot.title = element_text(hjust = 0.5))
+plot4
+```
+
+En génétique humaine, il y a un environ 2 fois plus de transitions que de transversions.
+Sur le plot, on voit environ 2/3 de transitions et 1/3 de transversions ce qui est cohérent.
+Valeurs cohérentes dans tous les VCF.
+
+## Nombre et type de transitions/transversions par VCF et par gène
+
+```{r}
+plot5 = ggplot(nombre_type_snv[!is.na(nombre_type_snv$type_snv), ], aes(fill = type_snv, y = vcf_gene, x = nombre)) +
+  geom_bar(position = position_fill(reverse=FALSE), stat="identity") +
+  labs(title = "Répartition des types de SNV par VCF et par gène", x = "Nombre", y = "VCF et gène") +
+  scale_fill_manual(values = c("#a6cee3", "#1f78b4","#b2df8a", "#33a02c", "#fb9a99", "#e31a1c", "#fdbf6f", "#ff7f00", "#cab2d6", "#6a3d9a", "#ffff99", "#b15928")) +
+  labs(fill = "Type de SNV", x = "Nombre", y = "VCF") +
+  theme(plot.title = element_text(hjust = 0.5, size=14, face="bold"), plot.subtitle = element_text(hjust = 0.5)) + 
+  theme(panel.grid = element_blank())
+ggplotly(plot5)
+```
+
+Une répartition des types de SNV cohérente entre VCF pour chaque gène.
+
+## Exploration des délétions/insertions
+
+```{r}
+plot6 = ggplot(vcf_all %>% filter (type == "insertion" | type == "deletion"), aes(x = taille_delins, y = vcf)) + 
+  geom_boxplot(aes(fill=type)) + 
+  theme_classic() + 
+  labs(x = "Taille des delins", y = "VCF", title = "Boxplots de la taille des insertions et délétions par VCF") + 
+  theme(plot.title = element_text(hjust = 0.5, size=12, face="bold"), plot.subtitle = element_text(hjust = 0.5)) + 
+  labs(fill = "Type de delins") +
+  scale_fill_manual(values = c("deletion" = "#bebada", "insertion" ="#ffffb3"))
+plot6
+```
+
+La distribution des tailles des délétions est équivalente entre les 4 VCF. 
+Les VCF 12x, 24x et 40x contiennent plus de valeurs aberrantes pour les insertions et délétions que le VCF de référence.
+La taille maximale des insertions du VCF de référence est plus petite que pour les 3 VCF obtenus avec le pipeline. 
+L'interquartile est plus petit également pour la taille des insertions du VCF de référence ce qui signifie que les valeurs des insertions sont plus regroupées autour de la médiane.
+Il y a moins de disparité des valeurs pour le VCF de référence.
+
+```{r, fig.width=14, fig.height=6}
+plot7 = ggplot(vcf_all %>% filter (type == "insertion"), aes(x = taille_delins, y = vcf)) +
+  geom_boxplot(aes(fill=gene)) +
+  theme_classic() +
+  labs(x = "Taille des insertions", y = "VCF", title = "Boxplots de la taille des insertions par VCF et par gène") + 
+  theme(plot.title = element_text(hjust = 0.5, size=12, face="bold"), plot.subtitle = element_text(hjust = 0.5)) + 
+  labs(fill = "Noms des gènes") +
+  scale_fill_manual(values = c("EPHA5" = "#fdc086", "LPL" ="#91bfdb", "UTS2" = "#b2df8a"))
+
+plot8 = ggplot(vcf_all %>% filter (type == "deletion"), aes(x = taille_delins, y = vcf)) +
+  geom_boxplot(aes(fill=gene)) +
+  theme_classic() +
+  labs(x = "Taille des délétions", y = "VCF", title = "Boxplots de la taille des délétions par VCF et par gène") + 
+  theme(plot.title = element_text(hjust = 0.5, size=12, face="bold"), plot.subtitle = element_text(hjust = 0.5)) + 
+  labs(fill = "Noms des gènes") +
+  scale_fill_manual(values = c("EPHA5" = "#fdc086", "LPL" ="#91bfdb", "UTS2" = "#b2df8a"))
+
+plot_grid(plot7, plot8)
+```
+
+## Exploration de la profondeur de lecture des variants
+
+```{r, message=FALSE}
+plot9 = ggplot(vcf_12x_24x_40x, aes(x = as.numeric(vcf_12x_24x_40x$DP), y = vcf)) + geom_boxplot(aes(fill=gene)) + theme_classic() + 
+  theme_classic() +
+  labs(x = "Profondeur de lecture des variants", y = "VCF", title = "Boxplots de la profondeur de lecture des variants par gène") + 
+  theme(plot.title = element_text(hjust = 0.5, size=12, face="bold"), plot.subtitle = element_text(hjust = 0.5)) + 
+  labs(fill = "Noms des gènes") +
+  scale_fill_manual(values = c("UTS2" = "#b2df8a", "LPL" ="#91bfdb", "EPHA5" = "#fdc086"))
+plot9
+```
+
+```{r, include=FALSE}
+vcf_dp = vcf_12x_24x_40x %>% group_by(vcf,DP) %>% summarise(nombre=n())
+dp_12x = filter(vcf_dp, vcf == "vcf_12x")
+dp_24x = filter(vcf_dp, vcf == "vcf_24x")
+dp_40x = filter(vcf_dp, vcf == "vcf_40x")
+dp_12x$DP = as.numeric(dp_12x$DP)
+dp_24x$DP = as.numeric(dp_24x$DP)
+dp_40x$DP = as.numeric(dp_40x$DP)
+```
+
+```{r, fig.width=15, message=FALSE}
+plot10 = ggplot(dp_12x, aes(x = DP, y = nombre)) +
+  geom_histogram(stat = "identity", fill = "#a6cee3") +
+  geom_vline(xintercept = mean(dp_12x$DP), color = "#fd8d3c", linetype = "dashed", size = 1) +
+  labs(x = "Profondeur de lecture", y = "Nombre de variants", title = "VCF 12x") + 
+  theme(axis.text.x = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5, size = 14, face = "bold")) + 
+  theme(panel.grid = element_blank())
+
+plot11 = ggplot(dp_24x, aes(x = DP, y = nombre)) +
+  geom_histogram(stat = "identity", fill = "#1d91c0") +
+  geom_vline(xintercept = mean(dp_24x$DP), color = "#fd8d3c", linetype = "dashed", size = 1) +
+  labs(x = "Profondeur de lecture", y = "Nombre de variants", title = "VCF 24x") + 
+  theme(axis.text.x = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5, size = 14, face = "bold")) + 
+  theme(panel.grid = element_blank())
+
+plot12 = ggplot(dp_40x, aes(x = DP, y = nombre)) +
+  geom_histogram(stat = "identity", fill = "#253494") +
+  geom_vline(xintercept = mean(dp_40x$DP), color = "#fd8d3c", linetype = "dashed", size = 1) +
+  labs(x = "Profondeur de lecture", y = "Nombre de variants", title = "VCF 40x") + 
+  theme(axis.text.x = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5) ) + 
+  theme(panel.grid = element_blank())
+
+plot_grid(plot10, plot11, plot12, ncol = 3, nrow = 1)
+```
+
+## Exploration de la VAF des VCF 12x, 24x et 40x
+
+On ne fera pas d'exploration de la VAF ni de la profondeur DP pour le VCF de référence car il n'y a pas d'explication aux valeurs de DP, AD, ADALL dans le VCF. 
+Les valeurs ne sont pas cohérentes avec ce qui est observé dans le bam de référence associé au VCF dans IGV. 
+
+## VAF minimale détectée dans chaque VCF
+
+```{r, include=FALSE}
+vcf_12x_24x_40x$vaf = round((as.numeric(vcf_12x_24x_40x$ADalt) / as.numeric(vcf_12x_24x_40x$DP))*100, 1)
+vaf_12x = vcf_12x_24x_40x %>% filter (vcf == "vcf_12x")
+vaf_24x = vcf_12x_24x_40x %>% filter (vcf == "vcf_24x")
+vaf_40x = vcf_12x_24x_40x %>% filter (vcf == "vcf_40x")
+```
+
+```{r}
+cat("VAF minimale dans VCF 12x :", min(vaf_12x$vaf), "%", "\n")
+cat("VAF minimale dans VCF 24x :", min(vaf_24x$vaf), "%", "\n")
+cat("VAF minimale dans VCF 40x :", min(vaf_40x$vaf), "%", "\n")
+```
+
+
+```{r, include=FALSE}
+vcf_12x_24x_40x$cat_vaf = 
+    ifelse(vcf_12x_24x_40x$vaf >= 10 & vcf_12x_24x_40x$vaf <20, "vaf_10_20",
+                          ifelse(vcf_12x_24x_40x$vaf >=20  & vcf_12x_24x_40x$vaf <30, "vaf_20_30",
+                                 ifelse(vcf_12x_24x_40x$vaf >=30  & vcf_12x_24x_40x$vaf <40, "vaf_30_40",
+                                      ifelse(vcf_12x_24x_40x$vaf >=40  & vcf_12x_24x_40x$vaf <50, "vaf_30_40", 
+                                             ifelse(vcf_12x_24x_40x$vaf >=50  & vcf_12x_24x_40x$vaf <60, "vaf_50_60",
+                                                    ifelse(vcf_12x_24x_40x$vaf >=60  & vcf_12x_24x_40x$vaf <70, "vaf_60_70",
+                                                           ifelse(vcf_12x_24x_40x$vaf >=70  & vcf_12x_24x_40x$vaf <80, "vaf_70_80",
+                                                                  ifelse(vcf_12x_24x_40x$vaf >=80  & vcf_12x_24x_40x$vaf <90, "vaf_80_90",
+                                                                         ifelse(vcf_12x_24x_40x$vaf >=90  & vcf_12x_24x_40x$vaf <=100, "vaf_90_100",
+                                             "autre")))))))))
+```
+
+```{r, include=FALSE}
+vcf_vaf = vcf_12x_24x_40x %>% group_by(vcf_12x_24x_40x$cat_vaf, vcf_12x_24x_40x$vcf) %>% count(vcf_12x_24x_40x$cat_vaf)
+names(vcf_vaf)[1] = "cat_vaf"
+names(vcf_vaf)[2] = "vcf"
+names(vcf_vaf)[3] = "nombre_variants"
+```
+
+```{r}
+plot13 = ggplot(vcf_vaf, aes(x = nombre_variants, y = cat_vaf , fill = vcf)) +
+  geom_bar(position = position_fill(reverse=FALSE), stat="identity") +
+  labs(title = "Répartition du nombre de variants par catégorie de VAF", x = "Nombre de variants", y = "Catégorie de VAF") +
+  scale_fill_manual(values = c("#a6cee3", "#1d91c0", "#253494")) +
+  labs(fill = "VCF") +
+  theme(plot.title = element_text(hjust = 0.5, size=14, face="bold"), plot.subtitle = element_text(hjust = 0.5)) + 
+  theme(panel.grid = element_blank()) +
+  theme_classic()
+ggplotly(plot13)
+```
+
+# Exploration des variants en commun dans les 4 VCF
+
+```{r fig.width=10, fig.height=8}
+variants_list = list(vcf_12x = unique(vcf_12x$variants), vcf_24x = unique(vcf_24x$variants), vcf_40x = unique(vcf_40x$variants), vcf_ref = unique(vcf_ref$variants))
+
+plot14 = upset(fromList(variants_list), order.by = "freq", text.scale = 2,  point.size = 5, sets.bar.color = "#999999", main.bar.color = "#fc8d62")
+plot14
+```
+
+```{r, include=FALSE}
+# Fonction pour faire un Venn diagramm
+display_venn = function(x, ...){
+  library(VennDiagram)
+  grid.newpage()
+  venn_object = venn.diagram(x, filename = NULL, ...)
+  grid.draw(venn_object)
+}
+```
+
+```{r, fig.width=8, fig.height=6}
+plot15 = display_venn(variants_list, category.names = c("vcf_12x" , "vcf_24x" , "vcf_40x", "vcf_ref"), 
+             fill = c("#a6cee3", "#1d91c0", "#253494", "#E69F00"), cat.cex = 1.2,
+        cat.fontface = "bold",
+        cat.default.pos = "outer",
+        cat.dist = c(0.1, 0.1, 0.1, 0.1))
+```
+
+```{r, include=FALSE}
+venndiag_all = venn(data=variants_list)
+cat_ref = as.data.frame(attributes(venndiag_all)$intersections$vcf_ref)
+cat_40x = as.data.frame(attributes(venndiag_all)$intersections$vcf_40x)
+cat_24x = as.data.frame(attributes(venndiag_all)$intersections$vcf_24x)
+cat_12x = as.data.frame(attributes(venndiag_all)$intersections$vcf_12x)
+cat_all = as.data.frame(attributes(venndiag_all)$intersections$`vcf_12x:vcf_24x:vcf_40x:vcf_ref`)
+cat_24x_40x_ref = as.data.frame(attributes(venndiag_all)$intersections$`vcf_24x:vcf_40x:vcf_ref`)
+cat_12x_40x_ref = as.data.frame(attributes(venndiag_all)$intersections$`vcf_12x:vcf_40x:vcf_ref`)
+cat_12x_24x_40x = as.data.frame(attributes(venndiag_all)$intersections$`vcf_12x:vcf_24x:vcf_40x`)
+cat_40x_ref = as.data.frame(attributes(venndiag_all)$intersections$`vcf_40x:vcf_ref`)
+cat_24x_ref = as.data.frame(attributes(venndiag_all)$intersections$`vcf_24x:vcf_ref`)
+cat_24x_40x = as.data.frame(attributes(venndiag_all)$intersections$`vcf_24x:vcf_40x`)
+cat_12x_40x = as.data.frame(attributes(venndiag_all)$intersections$`vcf_12x:vcf_40x`)
+
+cat_ref$categorie = c("cat_ref")
+cat_40x$categorie = c("cat_40x")
+cat_24x$categorie = c("cat_24x")
+cat_12x$categorie = c("cat_12x")
+cat_all$categorie = c("cat_all")
+cat_24x_40x_ref$categorie = c("cat_24x_40x_ref")
+cat_12x_40x_ref$categorie = c("cat_12x_40x_ref")
+cat_12x_24x_40x$categorie = c("cat_12x_24x_40")
+cat_40x_ref$categorie = c("cat_40x_ref")
+cat_24x_ref$categorie = c("cat_24x_ref")
+cat_24x_40x$categorie = c("cat_24x_40x")
+cat_12x_40x$categorie = c("cat_12x_40x")
+
+cat_vcf_all = list(cat_ref,cat_40x,cat_24x,cat_12x,cat_all,cat_24x_40x_ref,cat_12x_40x_ref,cat_12x_24x_40x,cat_40x_ref,cat_24x_ref,cat_24x_40x,cat_12x_40x)
+newcol = c("variants","categorie")
+new_list = lapply(cat_vcf_all, setNames, newcol)
+cat_vcf_all = bind_rows(new_list)
+
+cat_vcf_all = cat_vcf_all %>% separate(variants, c("chromosome", "position", "ref", "alt"), "_")
+cat_vcf_all$type <- ifelse(cat_vcf_all$alt == "*", "undetermined",
+                        ifelse (nchar(cat_vcf_all$ref)==1 & nchar(cat_vcf_all$alt)==1, "SNV",
+                               ifelse(nchar(cat_vcf_all$ref) >= 2 & nchar(cat_vcf_all$alt) == 1, "deletion",
+                                      ifelse(nchar(cat_vcf_all$ref) ==1 & nchar(cat_vcf_all$alt)>=2, "insertion", 
+                                             "autre"))))
+cat_vcf_all$gene = ifelse(cat_vcf_all$chromosome =="chr4", "EPHA5",
+                        ifelse(cat_vcf_all$chromosome =="chr1", "UTS2",
+                               ifelse(cat_vcf_all$chromosome =="chr8", "LPL", "autre")))
+```
+
+```{r, include=FALSE}
+cat_vcf_all_nombre = cat_vcf_all %>% group_by (cat_vcf_all$categorie) %>% count(cat_vcf_all$type)
+names(cat_vcf_all_nombre)[1]="categorie"
+names(cat_vcf_all_nombre)[2]="type"
+names(cat_vcf_all_nombre)[3]="nombre"
+```
+
+```{r}
+plot16 = ggplot(cat_vcf_all_nombre, aes(fill=type, x=nombre, y=categorie)) +
+  geom_bar(position = "stack", stat="identity") +
+  scale_fill_manual(values = c("#bebada", "#ffffb3", "#8dd3c7", "#170f0f")) +
+   labs(title = "Nombre de variants par catégories et par type de variants") +
+  labs(fill = "Type de variants", x = "Nombre de variants", y = "Catégories de VCF") + 
+  theme(panel.grid = element_blank(), plot.title = element_text(hjust = 0.5))
+```
+
+```{r, include=FALSE}
+cat_vcf_all_genes = cat_vcf_all %>% group_by (cat_vcf_all$categorie) %>% count(cat_vcf_all$gene)
+names(cat_vcf_all_genes)[1]="categorie"
+names(cat_vcf_all_genes)[2]="gene"
+names(cat_vcf_all_genes)[3]="nombre"
+```
+
+```{r, fig.width=10, fig.height=8}
+plot17 = ggplot(cat_vcf_all_genes, aes(fill=gene, x=nombre, y=categorie)) +
+  geom_bar(position = "stack", stat="identity") +
+  scale_fill_manual(values = c("UTS2" = "#b2df8a", "LPL" ="#91bfdb", "EPHA5" = "#fdc086")) +
+  labs(title = "Nombre de variants par catégories et par gènes") +
+  labs(fill = "Type de variants", x = "Nombre de variants", y = "Noms des gènes") + 
+  theme(panel.grid = element_blank(), plot.title = element_text(hjust = 0.5))
+
+plot_grid(plot16, plot17, ncol = 1, nrow = 2)
+```
+
+## Exploration des variants en commun dans les 3 VCF générés par le pipeline
+
+```{r, fig.width=8, fig.height=8}
+variants_list_12x_24x_40x = list(vcf_12x = unique(vcf_12x$variants), vcf_24x = unique(vcf_24x$variants), vcf_40x = unique(vcf_40x$variants))
+
+plot18 = display_venn(variants_list_12x_24x_40x, category.names = c("vcf_12x" , "vcf_40x", "vcf_24x"),
+  fill = c("#a6cee3", "#1d91c0", "#253494"), cat.cex = 1.2,
+        cat.fontface = "bold",
+        cat.default.pos = "outer",
+        cat.dist = c(0.1, 0.1, 0.1))
+```
+
+# Exploration des métriques de qualité: datas générés par Hap.py d'Illumina
+recall (sensibilité), précision (spécificité) et score F1.
+Ce sont des métriques qui permettent de voir si un modèle est performant. 
+Le score F1 combien recall et précision
+Plus le recall est élevé, plus le modèle repère des positifs.
+Plus la précision est élevée, moins le modèle se trompe sur les positifs (moins il y a de faux positifs).
+Plus le score F1 est élevé, plus le modèle est performant.
+
+## Courbe ROC 
+
+```{r}
+happy_12x_summury = read.table("/home/elodie/Documents/Analysis/Happy_12x/Happy_12x/ref-12x.summary.csv", header=TRUE, sep=',')
+happy_24x_summury = read.table("/home/elodie/Documents/Analysis/Happy_24x/Happy_24x/ref-24x.summary.csv", header=TRUE, sep=',')
+happy_40x_summury = read.table("/home/elodie/Documents/Analysis/Happy_40x/Happy_40x/ref-40x.summary.csv", header=TRUE, sep=',')
+```
+
+```{r, include=FALSE}
+#code récupéré sur Github Hap.py
+#fonction pour lire les CSV générés par Happy SNP (all), SNP_PASS, INDEL (all), INDEL_PASS
+read_single = function(x) {
+  nx = strsplit(x, "\\:")[[1]]
+  
+  if(length(nx) == 1) {
+    name = basename(file_path_sans_ext(x))
+  } else {
+    x = nx[1]
+    name = nx[2]
+  }
+  cat(sprintf("Reading %s as %s\n", x, name))
+#création d'une liste de dataframe
+  all_results = list()
+#Print de la liste vide
+  print(all_results)
+  all_results$roc_data_snp_all = read.csv(paste(x, "roc.Locations.SNP", "csv", "gz", sep="."))
+  all_results$roc_data_indel_all = read.csv(paste(x, "roc.Locations.INDEL", "csv", "gz", sep="."))
+  all_results$roc_data_snp_pass = read.csv(paste(x, "roc.Locations.SNP.PASS", "csv", "gz", sep="."))
+  all_results$roc_data_indel_pass = read.csv(paste(x, "roc.Locations.INDEL.PASS", "csv", "gz", sep="."))
+#Print de la liste des dataframe créée
+  print(all_results)
+#SNP
+  sel_snp_file = paste(x, "roc.Locations.SNP.SEL", "csv", "gz", sep=".")
+# if we have a selectively-filtered ROC, don't show "PASS" ROC
+  if(file.exists(sel_snp_file)) {
+    all_results$roc_data_snp_sel = read.csv(sel_snp_file)
+  } else {
+    all_results$roc_data_snp_sel = all_results$roc_data_snp_pass
+  }
+  all_results$roc_data_snp_all = head(subset(all_results$roc_data_snp_all,
+                                             QQ == min(all_results$roc_data_snp_all["QQ"])), n=1)
+  print(all_results$roc_data_snp_all)
+  all_results$roc_data_snp_pass = head(subset(all_results$roc_data_snp_pass,
+                                              QQ == min(all_results$roc_data_snp_pass["QQ"])),n=1)
+  sel_min = head(subset(all_results$roc_data_snp_sel,
+                        QQ == min(all_results$roc_data_snp_sel["QQ"])),n=1)
+  all_results$roc_connector_snp = rbind(all_results$roc_data_snp_all, sel_min)
+  all_results$roc_connector_snp$Filter = "CONN"
+  print(all_results$roc_connector_snp)
+  all_results$roc_data_snp_sel$Filter = "ROC"
+  print(all_results$roc_data_snp_sel)
+
+  #INDEL 
+  sel_indel_file = paste(x, "roc.Locations.INDEL.SEL", "csv", "gz", sep=".")
+  if(file.exists(sel_indel_file)) {
+    all_results$roc_data_indel_sel = read.csv(sel_indel_file)
+  } else {
+# use PASS ROC if no SEL ROC present
+    all_results$roc_data_indel_sel = all_results$roc_data_indel_pass
+  }
+# just keep single ALL and PASS point
+  all_results$roc_data_indel_all = head(subset(all_results$roc_data_indel_all,
+                                               QQ == min(all_results$roc_data_indel_all["QQ"])),n=1)
+  all_results$roc_data_indel_pass = head(subset(all_results$roc_data_indel_pass,
+                                                QQ == min(all_results$roc_data_indel_pass["QQ"])),n=1)
+  
+  sel_min = head(subset(all_results$roc_data_indel_sel,QQ == min(all_results$roc_data_indel_sel["QQ"])),n=1)
+  all_results$roc_connector_indel = rbind(all_results$roc_data_indel_all, sel_min)
+  all_results$roc_connector_indel$Filter = "CONN"
+  all_results$roc_data_indel_sel$Filter = "ROC"
+#Combine tous les éléments de la liste
+  result = do.call(rbind, all_results)
+  row.names(result) = NULL
+  print(class(result))
+  
+  result$filename = x
+  result$name = name
+  result$igroup = paste(result$name,result$Filter,result$Type)
+  return(result)
+}
+```
+
+```{r, include=FALSE} 
+vcf12x = read_single("/home/elodie/Documents/Analysis/Happy_12x/Happy_12x/ref-12x")
+vcf24x = read_single("/home/elodie/Documents/Analysis/Happy_24x/Happy_24x/ref-24x")
+vcf40x = read_single("/home/elodie/Documents/Analysis/Happy_40x/Happy_40x/ref-40x")
+```
+
+```{r, include=FALSE}
+plot_data = function(pdata, is.PR=FALSE) {
+  # precision / recall curve
+  if(is.PR) {
+    xaxis = "METRIC.Recall"
+    yaxis = "METRIC.Precision"
+  } else {
+    # approximate ROC-style curve (FPR is not correct)
+    xaxis = "FPR"
+    yaxis = "TPR"
+    pdata$FPR = pdata$QUERY.FP / (pdata$QUERY.TOTAL - pdata$QUERY.UNK)
+    pdata$TPR = pdata$TRUTH.TP / (pdata$TRUTH.TP + pdata$TRUTH.FN)
+    cc = complete.cases(pdata[, c(xaxis, yaxis)])
+    print(pdata)
+    pdata = pdata[cc, ]
+    print(pdata)
+  }
+  plt = ggplot(pdata, aes_string(x=xaxis, y=yaxis, color="name")) + 
+    labs(title = paste("Courbe ROC", pdata$Type)[[1]])
+  facet_wrap(~Type)
+  
+  # ROC lines
+  plt = plt +
+    geom_line(data = subset(pdata, Filter == "ROC"),
+              mapping=aes(group=igroup),
+              size=1.5,
+              linetype=3)
+  
+  # Connector between ALL and start of ROC
+  plt = plt +
+    geom_line(data = subset(pdata, Filter == "CONN"),
+              mapping=aes(group=igroup),
+              size=1.5,
+              linetype=4)
+  
+  plt = plt +
+    geom_point(data = subset(pdata, Filter %in% c("CONN")),
+               mapping=aes(group=igroup),
+               size=8)
+  
+  plt = plt +
+    geom_point(data = subset(pdata, Filter %in% c("PASS", "ALL")),
+               mapping=aes(shape=Filter, group=igroup),
+               size=8)
+  
+  xl_min = max(0,
+               min(subset(pdata, Filter %in% c("PASS", "ALL"))[[xaxis]]) - 0.02)
+  xl_max = min(1.0,
+               max(subset(pdata, Filter %in% c("PASS", "ALL"))[[xaxis]]) + 0.02)
+  yl_min = max(0,
+               min(subset(pdata, Filter %in% c("PASS", "ALL"))[[yaxis]]) - 0.01)
+  yl_max = min(1.0,
+               max(subset(pdata, Filter %in% c("PASS", "ALL"))[[yaxis]]) + 0.01)
+  
+  plt = plt +
+    scale_color_brewer("", palette="Set1") +
+    #xlim(c(xl_min, xl_max)) +
+    xlim(c(0, 1)) +
+    #ylim(c(yl_min, yl_max)) +
+    ylim(c(0, 1)) +
+    theme_bw(base_size=18)
+  
+  return(plt)
+}
+```
+
+```{r, include=FALSE}
+vcf12x_snp = filter(vcf12x, Type=="SNP")
+vcf24x_snp = filter(vcf24x, Type=="SNP")
+vcf40x_snp = filter(vcf40x, Type=="SNP")
+vcf12x_indel = filter(vcf12x, Type=="INDEL")
+vcf24x_indel = filter(vcf24x, Type=="INDEL")
+vcf40x_indel = filter(vcf40x, Type=="INDEL")
+roc_snp = rbind(vcf12x_snp, vcf24x_snp, vcf40x_snp)
+roc_indel = rbind(vcf12x_indel, vcf24x_indel, vcf40x_indel)
+```
+
+```{r, fig.width=10, fig.height=10}
+plot_roc_snp = plot_data(roc_snp, is.PR=TRUE)
+plot_roc_indel = plot_data(roc_indel, is.PR=TRUE)
+plot_grid(plot_roc_snp, plot_roc_indel, nrow=2, ncol=1)
 ```
 
