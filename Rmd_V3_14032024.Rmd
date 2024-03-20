@@ -122,44 +122,49 @@ ggplotly(plot1)
 
 La distribution des types de variants semble équivalente pour chaque VCF. Cependant dans les 3 VCF générés par le pipeline on trouve des variants "Undetermined" mais pas dans le VCF de référence. 
 
-Que sont les Undetermined non retrouvés dans le VCF de référence ?
 
-```{r}
+```{r include=FALSE}
+#Que sont les Undetermined non retrouvés dans le VCF de référence ?
 undetermined = vcf_all %>% filter(type == "undetermined")
 print(undetermined)
+#Variants avec * en alt lié au vt décompose ?
 ```
-Variants avec * en alt lié au vt décompose ?
 
-```{r}
+
+```{r, include=FALSE}
 pos66388036 = vcf_all %>% filter(variants == "chr4_66388034_GTA_G")
 print(pos66388036)
 pos66388036bis = vcf_all %>% filter(variants == "chr4_66388036_A_G")
 print(pos66388036bis)
+#A cette position délétion de 2 bases (66388035+66388036) bien détectée dans les 4 VCF
+#Substitution de A>G en 66388036 dans le VCF_12x (comme peu de reads, variant caller se trompe? Faux positif?)
 ```
-A cette position délétion de 2 bases (66388035+66388036) bien détectée dans les 4 VCF
-Substitution de A>G en 66388036 dans le VCF_12x (comme peu de reads, variant caller se trompe? Faux positif?)
 
-```{r}
+
+```{r, include=FALSE}
 pos66440407 = vcf_all %>% filter(position == 66440407)
 print(pos66440407)
+#Zone avec des reads ayant des dététions différentes qui se chevauchent dans les 4 BAM. Le VCF de référence n'appelle pas de variants dans cette zone. Zone difficile pour le variant caller, faire appel à un variant caller spécialiste des délétions?
 ```
-Zone avec des reads ayant des dététions différentes qui se chevauchent dans les 4 BAM. Le VCF de référence n'appelle pas de variants dans cette zone. Zone difficile pour le variant caller, faire appel à un variant caller spécialiste des délétions?
 
-```{r}
+
+```{r, include=FALSE}
 pos66214417 = vcf_all %>% filter (position == 66214417)
 print(pos66214417)
 pos66214413 = vcf_all %>% filter (position == 66214413)
 print(pos66214413)
+#Délétion de 4 bases de 66214413 à 66214417 vu dans les 4 BAM mais uniquement appelée dans VCF 24x et 40x. Non appelé dans le VCF de référence.
+#Subtitution en 66214417 aussi un A>T vu dans les 4 BAM mais uniquement appelée dans le VCF 40x. Non appelé dans le VCF référence.
 ```
-Délétion de 4 bases de 66214413 à 66214417 vu dans les 4 BAM mais uniquement appelée dans VCF 24x et 40x. Non appelé dans le VCF de référence.
-Subtitution en 66214417 aussi un A>T vu dans les 4 BAM mais uniquement appelée dans le VCF 40x. Non appelé dans le VCF référence.
 
-```{r}
+
+```{r, include=FALSE}
 pos66473213 = vcf_all %>% filter (position == 66473213)
 print(pos66473213)
+#Dans le VCF de référence en position 66473209 à 66473213 : délétion de 4 bases appelée mais peu de reads avec la délétion et beaucoup plus de reads avec substitutions de A>C en 66473213. Substitutions appelée uniquement dans VCF 24x et 40x.
+#Dans les zones où il y a des délétions et substitutions, le variant caller rencontre des difficultés?
+
 ```
-Dans le VCF de référence en position 66473209 à 66473213 : délétion de 4 bases appelée mais peu de reads avec la délétion et beaucoup plus de reads avec substitutions de A>C en 66473213. Substitutions appelée uniquement dans VCF 24x et 40x.
-Dans les zones où il y a des délétions et substitutions, le variant caller rencontre des difficultés?
 
 ## Nombre de variants par gène et par VCF
 
@@ -180,7 +185,7 @@ plot2 = ggplot(nombre_variants_par_gene, aes(fill=gene, y=vcf, x=nombre)) +
   labs(title = "Nombre de variants par gène et par VCF") 
 ggplotly(plot2)
 ```
-Le nombre de variants est identique dans chaque VCF pour les gènes UTS2 et LPL mais le nombre varie pour le plus grand gène UPHA5.
+Le nombre de variants est identique dans chaque VCF pour les gènes UTS2 et LPL mais le nombre varie pour le plus grand gène EPHA5.
 
 ## Nombre et type de variants par gène et par VCF
 
