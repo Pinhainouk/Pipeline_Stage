@@ -1,8 +1,8 @@
 
-# **README : Pipeline d'analyse de données de séquençage à haut débit pour la détection de variants de type SNP.**
+# **README : Pipeline d'analyse de données de séquençage à haut débit pour la détection de variants de type SNV.**
 
 ## **Description**
-Ce document détaille les différentes étapes de la réalisation d'un pipeline d'analyse de données de séquençage haut débit pour la détection de variants de type SNP. 
+Ce document détaille les différentes étapes de la réalisation d'un pipeline d'analyse de données de séquençage haut débit pour la détection de variants de type SNV. 
 
 ## **Les différentes étapes :**
 * L'évaluation de la qualité des données issues du séquençage avec l'outil **FastQC** permet de déterminer le nombre de séquences pour chaque échantillon, la qualité des séquences, leur longueur, une éventuelle contamination, la présence résiduelle d'adaptateurs de séquençage.
@@ -28,16 +28,18 @@ Ce document détaille les différentes étapes de la réalisation d'un pipeline 
 
 * L'annotation du fichier .vcf avec **CNNScoreVariants de GATK Model 2D** pour attribuer des scores de confiance aux variants génétiques en se basant sur l'apprentissage profond fourni par un réseau de neurones convolutionnel (CNN). Ces scores aident à évaluer la probabilité qu'un variant soit réel par opposition à un faux positif.
 
-* L'application d'un filtre par tranche avec **FilterVariantTranches de GATK Model 2D** aux fichiers vcf, en fonction des scores provenant de l'étape précédente **CNNScoreVariants de GATK**, permet de limiter les faux variants. --snp-tranche 99.95: filtre par tranche 99.95% des snp
+* L'application d'un filtre par tranche avec **FilterVariantTranches de GATK Model 2D** aux fichiers vcf, en fonction des scores provenant de l'étape précédente **CNNScoreVariants de GATK**, permet de limiter les faux variants. --SNV-tranche 99.95: filtre par tranche 99.95% des SNV
 --indel-tranche 99.4 : filtre par tranche 99.4% des indel en fonction des scores provenant de l'annotation dans le champ INFO de l'étape précédente.
 
 * **Vt decompose** est utilisé pour décomposer un variant complexe représenté par plusieurs variants simples (une insertion suivie d'une substitution décomposée en deux variants distinces sur deux lignes du vcf). -s divise les champs INFO et GENOTYPE de façon appropriée.
 
-* **Vt normalize** est utilisé pour normaliser les variants (qui ne sont pas toujours représenter de la même façon dans le vcf selon l'outil d'appel de variants.) La normalisation ajuste les positions de début et de fin de la représentation des variants. -q n'imprime pas les ptions ni le résumé -m donne des avertissements mais ne quitte pas lorsque REF est incompatible avec la séquence de référence masquée pour les non-SNP. 
+* **Vt normalize** est utilisé pour normaliser les variants (qui ne sont pas toujours représenter de la même façon dans le vcf selon l'outil d'appel de variants.) La normalisation ajuste les positions de début et de fin de la représentation des variants. -q n'imprime pas les ptions ni le résumé -m donne des avertissements mais ne quitte pas lorsque REF est incompatible avec la séquence de référence masquée pour les non-SNV. 
 
 * **Vt uniq** est utilisé pour supprimer les éventuels variants en double dans le vcf. 
 
 * La dernière étape est celle de l'annotation fonctionnelle des variants à l'aide de **Funcotator de GATK**. Il utilise une ou plusieurs bases de données mises à jour régulièrement qui contiennent des informations sur les régions génomiques, les transcrits, les protéines et les effets fonctionnels des variants sur les gènes associés. Nous avons utilisé la base Gencode (funcotator_dataSources.v1.4.20180615/gencode)
+
+* Pour comparer les VCF en sortie du pipeline et le VCF du Gold Standard, **Hap.py** est utilisé (outil d'Illumina) pour déterminer la sensibilité (recall), la spécificité (precision) et le score F1 afin de déterminer si le modèle est performant. Cet outil compare les génotypes au niveau des haplotypes (superlocus de 1 à 1000pb).
 
 ## **Pré-requis à l'utilisation du pipeline :**
 
@@ -86,6 +88,7 @@ vim ~/.bashrc
 | **Vt**             | https://genome.sph.umich.edu/wiki/Vt#Installation<BR>Bien suivre l'installation wiki via le git clone pour avoir les options requises.| **v0.5**
 | **Bcftools**       | https://github.com/samtools/bcftools/releases?page=2 | **v1.10.2**
 | **MultiQC**        | https://multiqc.info/docs/getting_started/installation/ | **v1.19**
+ **Hap.py**          | https://github.com/Illumina/hap.py?tab=readme-ov-file#installation<BR> | **v0.3.10**
 
 ## **Problèmes rencontrés :** 
 ### GATK v4.0 
@@ -105,7 +108,7 @@ normalize v0.5
 options:     input VCF file 
          [o] output VCF file                             
          [w] sorting window size                   
-         [n] no fail on reference inconsistency for non SNPs
+         [n] no fail on reference inconsistency for non SNVs
          [q] quiet
          [d] debug
          [r] reference FASTA file    
@@ -124,17 +127,21 @@ options : -o  output VCF file [-]
           -d  debug [false]
           -q  do not print options and summary [false]
           -m  warns but does not exit when REF is inconsistent
-              with masked reference sequence for non SNPs.
+              with masked reference sequence for non SNVs.
               This overides the -n option [false]
           -n  warns but does not exit when REF is inconsistent
-              with reference sequence for non SNPs [false]
+              with reference sequence for non SNVs [false]
           -f  filter expression []
           -w  window size for local sorting of variants [10000]
           -I  file containing list of intervals []
           -i  intervals []
           -r  reference sequence fasta file []
           -?  displays help
- ```         
+ ```  
+
+### Hap.py (Illumina)
+Hap.py utilise une version de Python inférieure à la v3 (v2.7). En installant dans un docker Python 2.7 et Hap.py, des problèmes de mémoires sont rencontrés sur la machine à l'exécution alors la commande a été lancée sur une machine plus puissante.
+
 ## **Lancement du pipeline :**
 
 **Avant d'exécuter le Script, activer l'environnement conda pour le fonctionnement de l'outil gatk :**
@@ -148,7 +155,7 @@ conda activate gatk
 - Le fichier bed
 - La fichier référence du génome
 - La fichier des adaptateurs pour BBDUK
-- le fichier vcf avec les SNP connus
+- le fichier vcf avec les SNV connus
 - le fichier vcf avec les indels connues
 - le dossier package des bases de données Funcotator
 
@@ -160,7 +167,7 @@ conda activate gatk
 -o : le chemin où vont être rangés les fichiers d'entrée et de sortie du pipeline
 -s : le nom du ou des échantillons à analyser
 -r : le chemin complet de la référence du génome
--n : le chemin complet du fichier vcf des snp connus
+-n : le chemin complet du fichier vcf des SNV connus
 -i : le chemin complet du fichier vcf des indels connues
 -f : le chemin complet du package funcotator contenant les bases de données
 -a : le chemin complet du fichier contenant les adaptateurs
@@ -172,7 +179,7 @@ Exemple de lancement :
 ./Script.sh -o /home/elodie/Documents/ \
 -s gold_12x_on_data_elodie \
 -r /home/elodie/Documents/Genome/hg19.p13.plusMT.no_alt_analysis_set.fa.gz \
--n /home/elodie/Documents/Genome/dbsnp_138.hg19.vcf \
+-n /home/elodie/Documents/Genome/dbSNV_138.hg19.vcf \
 -i /home/elodie/Documents/Genome/Mills_and_1000G_gold_standard.indels.hg19.sites.vcf \
 -f /home/elodie/Documents/Analysis/funcotator_dataSources.v1.4.20180615 \
 -a /home/elodie/Documents/Elodie/adapters.fa \
@@ -200,7 +207,9 @@ Exemple de lancement :
 ## **Fichiers de sortie** :
 - Fichiers BAM finaux, après l'étape BQSR : ```{path}/{sample}_aln_mem_sort_rmduplicates_apply_bqsr.bam```
 - Fichiers VCF finaux, après l'annotation fonctionnelle Funcotator : ```{path}/{sample}_filtervarianttranches_2D_decomposed_normalized_funcotated.vcf```
-- MultiQC : des fastq, fastq après bbduk et stats samtools
+- Fichiers HTML : après lancement du FastQC (avant et après le trimming).
+- Fichiers texte flagstats, idxstats et stats, métriques de qualité après l'alignement.
+- Fichiers VCF et CSV après Hap.py 
 
 ## **Glossaire :**
 BAM : Binary Alignment Map
@@ -229,7 +238,7 @@ read : fragment de plusieurs bases générés et lu par un séquenceur appelé a
 
 Réseau de neurones convolutionnel : système dont la conception est à l'origine schématiquement inspirée du fonctionnement des neurones biologiques, et qui par la suite s'est rapproché des méthodes statistiques. Lors de l'entraînement, un ensemble de données est utilisé pour permettre au modèle d'apprendre et de reconnaître un objet ou quelque chose en particulier.
 
-SNP : Single Nucleotide Polymorphism, variation d'une seule paire de base entre individus d'une même espèce
+SNV : Single Nucleotide Polymorphism, variation d'une seule paire de base entre individus d'une même espèce
 
 VCF : Variant Call Format
 
