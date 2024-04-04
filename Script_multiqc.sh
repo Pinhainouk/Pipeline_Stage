@@ -1,0 +1,36 @@
+#!/bin/bash -i
+
+path="/home/elodie/Documents/"
+
+################################################################################
+# MULTIQC SUR LES RAW
+################################################################################
+
+if [ ! -d "${path}/QC_Raw/MultiQC_Raw" ] ;then
+  echo "Le multiqc sur les fastqc_raw n'existe pas";
+  multiqc ${path}/QC_Raw --module fastqc --filename multiQC_Raw --outdir ${path}/QC_Raw/MultiQC_Raw
+else
+  echo "Le multiqc sur les fastqc_raw existe déjà"
+fi
+
+################################################################################
+# MULTIQC SUR LES RAW_TRIM
+################################################################################
+
+if [ ! -d "${path}/QC_Trimming/MultiQC_Trimming" ] ;then
+  echo "Le multiqc sur les fastqc_trimming n'existe pas";
+  multiqc ${path}/QC_Trimming --module fastqc --filename multiQC_Trimming --outdir ${path}/QC_Trimming/MultiQC_Trimming
+else
+  echo "Le multiqc sur les fastqc_trimming existe déjà"
+fi
+
+################################################################################
+# MULTIQC SUR STATS FLAGSTAT ET IDXSTATS
+################################################################################
+
+if [ ! -d "${path}/QC_Alignment/MultiQC_Alignment" ] ;then
+  echo "Le multiqc sur les stats alignement n'existe pas";
+  multiqc ${path}/QC_Alignment --module samtools --filename multiQC_Alignement --outdir ${path}/QC_Alignment/MultiQC_Alignement
+else
+  echo "Le multiqc sur les fastqc existe déjà"
+fi

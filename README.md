@@ -2,7 +2,7 @@
 # **README : Pipeline d'analyse de données de séquençage à haut débit pour la détection de variants de type SNV.**
 
 ## **Description**
-Ce document détaille les différentes étapes de la réalisation d'un pipeline d'analyse de données de séquençage haut débit pour la détection de variants de type SNV. 
+Ce document détaille les différentes étapes de la réalisation d'un pipeline d'analyse de données de séquençage haut débit pour la détection de variants de type SNV.
 
 ## **Les différentes étapes :**
 * L'évaluation de la qualité des données issues du séquençage avec l'outil **FastQC** permet de déterminer le nombre de séquences pour chaque échantillon, la qualité des séquences, leur longueur, une éventuelle contamination, la présence résiduelle d'adaptateurs de séquençage.
@@ -17,12 +17,12 @@ Ce document détaille les différentes étapes de la réalisation d'un pipeline 
 
 * Réalisation de statistiques à partir des bam avec **Samtools**.
 
-* L'élimination des duplicats de PCR liés aux étapes de PCR durant la préparation des librairies et des duplicats optiques liés au séquençage avec l'outil **MarkDuplicates de Picard**. 
+* L'élimination des duplicats de PCR liés aux étapes de PCR durant la préparation des librairies et des duplicats optiques liés au séquençage avec l'outil **MarkDuplicates de Picard**.
 * Fichier de métriques après enlèvement des duplicats de PCR et optiques.
 
 * Réalisation de statistiques à partir des bam sans duplicats de PCR avec **Samtools**.
 
-* La recalibration du niveau de qualité des bases avec l'outil **BaseQualityScoreRecalibration (BQSR) de GATK**. Il consiste à corriger tout biais systématiques (sur-estimations ou sous-estimations des scores de qualité) afin d'améliorer la précision des scores de qualité de base. Cette étape à pour but de réduire les erreurs de séquençage et d'amélorer la fiabilité des appels de variants ultérieurs. 
+* La recalibration du niveau de qualité des bases avec l'outil **BaseQualityScoreRecalibration (BQSR) de GATK**. Il consiste à corriger tout biais systématiques (sur-estimations ou sous-estimations des scores de qualité) afin d'améliorer la précision des scores de qualité de base. Cette étape à pour but de réduire les erreurs de séquençage et d'améliorer la fiabilité des appels de variants ultérieurs.
 
 * L'appel des variants avec l'outil **Haplotype Caller de GATK**. L'algorithme détermine des régions actives (celles présentant des variations), identifie les haplotypes possibles, ré-aligne chaque haplotype par rapport à l'haplotype de référence à l'aide de Smith-Waterman afin de détecter de potentielles variations.
 
@@ -33,24 +33,25 @@ Ce document détaille les différentes étapes de la réalisation d'un pipeline 
 
 * **Vt decompose** est utilisé pour décomposer un variant complexe représenté par plusieurs variants simples (une insertion suivie d'une substitution décomposée en deux variants distinces sur deux lignes du vcf). -s divise les champs INFO et GENOTYPE de façon appropriée.
 
-* **Vt normalize** est utilisé pour normaliser les variants (qui ne sont pas toujours représenter de la même façon dans le vcf selon l'outil d'appel de variants.) La normalisation ajuste les positions de début et de fin de la représentation des variants. -q n'imprime pas les ptions ni le résumé -m donne des avertissements mais ne quitte pas lorsque REF est incompatible avec la séquence de référence masquée pour les non-SNV. 
+* **Vt normalize** est utilisé pour normaliser les variants (qui ne sont pas toujours représenter de la même façon dans le vcf selon l'outil d'appel de variants.) La normalisation ajuste les positions de début et de fin de la représentation des variants. -q n'imprime pas les options ni le résumé -m donne des avertissements mais ne quitte pas lorsque REF est incompatible avec la séquence de référence masquée pour les non-SNV.
 
-* **Vt uniq** est utilisé pour supprimer les éventuels variants en double dans le vcf. 
+* **Vt uniq** est utilisé pour supprimer les éventuels variants en double dans le vcf.
 
-* La dernière étape est celle de l'annotation fonctionnelle des variants à l'aide de **Funcotator de GATK**. Il utilise une ou plusieurs bases de données mises à jour régulièrement qui contiennent des informations sur les régions génomiques, les transcrits, les protéines et les effets fonctionnels des variants sur les gènes associés. Nous avons utilisé la base Gencode (funcotator_dataSources.v1.4.20180615/gencode)
+* La dernière étape est celle de l'annotation fonctionnelle des variants à l'aide de **Funcotator de GATK**. Il utilise une ou plusieurs bases de données mises à jour régulièrement qui contiennent des informations sur les régions génomiques, les transcrits, les protéines et les effets fonctionnels des variants sur les gènes associés. Nous avons utilisé la base Gencode (funcotator_dataSources.v1.4.20180615/gencode).
 
-* Pour comparer les VCF en sortie du pipeline et le VCF du Gold Standard, **Hap.py** est utilisé (outil d'Illumina) pour déterminer la sensibilité (recall), la spécificité (precision) et le score F1 afin de déterminer si le modèle est performant. Cet outil compare les génotypes au niveau des haplotypes (superlocus de 1 à 1000pb).
+* Les données de qualité des fastqc avant/après trimming ainsi que les stats d'alignement de tous les échantillons sont agrégés avec **MultiQC**.
+
+* Pour l'analyse des vcf en sortie du pipeline et la comparaison avec un Gold Standard afin d'évaluer la performance du pipeline. Se référer au **README_analyse.md** dans le dossier **Analyse_données**.
 
 ## **Pré-requis à l'utilisation du pipeline :**
 
 * **Installation de Python (v3.11.5) et java (v17.0.9) pour le fonctionnement des outils.**
 
-
 * **Création de l'index du génome hg19: env. 2-3h**
 
 L'indexation du génome de référence avec **BWA** permet de préparer une structure de données qui facilite la recherche rapide des positions des séquences dans le génome à l'étape d'alignement.
 Il s'agit du génome version hg19 sans les chromosomes alternatifs et avec les mitochrondries.
-**hg19.p13.plusMT.no_alt_analysis_set.fa.gz** téléchargé sur Genome Browser (dernière modification 2020-03-09 10:21) : 
+**hg19.p13.plusMT.no_alt_analysis_set.fa.gz** téléchargé sur Genome Browser (dernière modification 2020-03-09 10:21) :
 https://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/analysisSet/
 
 **Quand on créé l'index, il est important qu'il ait le même nom que la référence.**
@@ -76,7 +77,7 @@ vim ~/.bashrc
 | **GATK** | gatk
 | **Vt** | vt
 
-## **Guide d'installation et versions des outils :** 
+## **Guide d'installation et versions des outils :**
 | Outils | Liens d'installation | Versions
 |----- |----- |-----
 | **FastQC** | https://www.bioinformatics.babraham.ac.uk/projects/download.html#FastQC | **v0.12.1**
@@ -88,10 +89,9 @@ vim ~/.bashrc
 | **Vt**             | https://genome.sph.umich.edu/wiki/Vt#Installation<BR>Bien suivre l'installation wiki via le git clone pour avoir les options requises.| **v0.5**
 | **Bcftools**       | https://github.com/samtools/bcftools/releases?page=2 | **v1.10.2**
 | **MultiQC**        | https://multiqc.info/docs/getting_started/installation/ | **v1.19**
- **Hap.py**          | https://github.com/Illumina/hap.py?tab=readme-ov-file#installation<BR> | **v0.3.10**
 
-## **Problèmes rencontrés :** 
-### GATK v4.0 
+## **Problèmes rencontrés :**
+### GATK v4.0
 La nouvelle version 4.5.0.0 de GATK installée dans l'environnement conda résoud les erreurs suivantes rencontrées à l'exécution de CNNScoreVariants Model 2D avec les versions v4.0 antérieures :
 ```
 java.lang.RuntimeException: A required Python package ("gatktool") could not be imported into the Python environment. This tool requires that the GATK Python environment is properly established and activated. Please refer to GATK [README.md](http://readme.md/) file for instructions on setting up the GATK Python environment.
@@ -105,7 +105,7 @@ Vt installé sans le git clone renvoie une erreur à l'exécution de Vt normaliz
 ```
 normalize v0.5
 
-options:     input VCF file 
+options:     input VCF file
          [o] output VCF file                             
          [w] sorting window size                   
          [n] no fail on reference inconsistency for non SNVs
@@ -139,9 +139,6 @@ options : -o  output VCF file [-]
           -?  displays help
  ```  
 
-### Hap.py (Illumina)
-Hap.py utilise une version de Python inférieure à la v3 (v2.7). En installant dans un docker Python 2.7 et Hap.py, des problèmes de mémoires sont rencontrés sur la machine à l'exécution alors la commande a été lancée sur une machine plus puissante.
-
 ## **Lancement du pipeline :**
 
 **Avant d'exécuter le Script, activer l'environnement conda pour le fonctionnement de l'outil gatk :**
@@ -161,7 +158,7 @@ conda activate gatk
 
 **Deux façons de lancer le script du pipeline :**
 
-* Soit on lance le **Script.sh** avec les **options obligatoires suivantes** : 
+* Soit on lance le **Script.sh** avec les **options obligatoires suivantes** :
 
 ```
 -o : le chemin où vont être rangés les fichiers d'entrée et de sortie du pipeline
@@ -186,7 +183,7 @@ Exemple de lancement :
 -v hg19 \
 ```
 
-* Soit on lance le **Script_lancement.sh** avec un fichier de config (Config.txt) contenant tous les échantillons à analyser. 
+* Soit on lance le **Script_lancement.sh** avec un fichier de config (Config.txt) contenant tous les échantillons à analyser.
 Dans le Script_lancement.sh, penser à modifier les chemins dans les variables ```fichier_liste``` et ```script``` pour indiquer les chemins où se trouvent respectivement le fichier de config et le script. Il boucle alors sur le fichier de config tant qu'une ligne n'est pas vide et il exécute le script sur chaque échantillon.
 
 Exemple de fichier de config à faire avec une ligne par échantillon :
@@ -204,47 +201,32 @@ Exemple de lancement :
 ./Script_lancement.sh
 ```
 
-## **Fichiers de sortie** :
+**Lancement du Script_multiqc.sh**
+
+Une fois l'exécution du pipeline terminé, lancer le Script_multiqc.sh.
+
+## **Données de sortie** :
 - Fichiers BAM finaux, après l'étape BQSR : ```{path}/{sample}_aln_mem_sort_rmduplicates_apply_bqsr.bam```
 - Fichiers VCF finaux, après l'annotation fonctionnelle Funcotator : ```{path}/{sample}_filtervarianttranches_2D_decomposed_normalized_funcotated.vcf```
 - Fichiers HTML : après lancement du FastQC (avant et après le trimming).
 - Fichiers texte flagstats, idxstats et stats, métriques de qualité après l'alignement.
-- Fichiers VCF et CSV après Hap.py 
+- Fichiers VCF.
+- Dossiers MultiQC_Raw, MultiQC_Trimming, MultiQC_Alignement.
 
 ## **Glossaire :**
 BAM : Binary Alignment Map
-
 BBDuk : DUK pour Decontamination Using Kmers (de la suite d'outils BBTools).
-
 BQSR : Base Quality Score Recalibration
-
 BWA : Burrows-Wheeler Aligner
-
 duplicats de PCR : paires de lectures qui ont le même début et la même fin d'alignement.
-
 Funcotator : FUNCtional annOTATOR
-
 GATK : Genome Analysis ToolKit
-
 hg19 : human genome GRCh37
-
 MEM : Maximal Exact Matches
-
 NGS : Next Generation Sequencing
-
 PCR : Polymerase Chain Reaction
-
 read : fragment de plusieurs bases générés et lu par un séquenceur appelé aussi une lecture, une séquence
-
 Réseau de neurones convolutionnel : système dont la conception est à l'origine schématiquement inspirée du fonctionnement des neurones biologiques, et qui par la suite s'est rapproché des méthodes statistiques. Lors de l'entraînement, un ensemble de données est utilisé pour permettre au modèle d'apprendre et de reconnaître un objet ou quelque chose en particulier.
-
 SNV : Single Nucleotide Polymorphism, variation d'une seule paire de base entre individus d'une même espèce
-
 VCF : Variant Call Format
-
 Vt : Variant Tool
-
-
-
-
-
