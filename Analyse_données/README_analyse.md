@@ -58,7 +58,11 @@ Lancer le Script_analyse.sh sans options.
 ## **Glossaire :**
 
 BAM : Binary Alignment Map
+
 BW : bigWig
+
 CSV : Comma-Separated Values (fichier texte représentant des données tabulaires sous forme de valeurs séparées par des virgules)
+
 JSON : JavaScript Object Notation (représentation de données structurées basées sur des paires nom/valeur et des listes ordonnées)
+
 VCF : Variant Call Format

@@ -215,18 +215,33 @@ Une fois l'exécution du pipeline terminé, lancer le Script_multiqc.sh.
 
 ## **Glossaire :**
 BAM : Binary Alignment Map
-BBDuk : DUK pour Decontamination Using Kmers (de la suite d'outils BBTools).
+
+BBDuk : DUK pour Decontamination Using Kmers (de la suite d'outils BBTools)
+
 BQSR : Base Quality Score Recalibration
+
 BWA : Burrows-Wheeler Aligner
-duplicats de PCR : paires de lectures qui ont le même début et la même fin d'alignement.
+
+duplicats de PCR : paires de lectures qui ont le même début et la même fin d'alignement
+
 Funcotator : FUNCtional annOTATOR
+
 GATK : Genome Analysis ToolKit
+
 hg19 : human genome GRCh37
+
 MEM : Maximal Exact Matches
+
 NGS : Next Generation Sequencing
+
 PCR : Polymerase Chain Reaction
+
 read : fragment de plusieurs bases générés et lu par un séquenceur appelé aussi une lecture, une séquence
+
 Réseau de neurones convolutionnel : système dont la conception est à l'origine schématiquement inspirée du fonctionnement des neurones biologiques, et qui par la suite s'est rapproché des méthodes statistiques. Lors de l'entraînement, un ensemble de données est utilisé pour permettre au modèle d'apprendre et de reconnaître un objet ou quelque chose en particulier.
+
 SNV : Single Nucleotide Polymorphism, variation d'une seule paire de base entre individus d'une même espèce
+
 VCF : Variant Call Format
+
 Vt : Variant Tool
