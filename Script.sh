@@ -116,17 +116,6 @@ else
 fi
 
 ################################################################################
-# MULTIQC SUR LES RAW
-################################################################################
-
-if [ ! -d "${path}/QC_Raw/MultiQC_Raw" ] ;then
-  echo "Le multiqc sur les fastqc n'existe pas";
-  multiqc ${path}/QC_Raw --module fastqc --filename multiQC_Raw --outdir MultiQC_Raw
-else
-  echo "Le multiqc sur les fastqc existe déjà"
-fi
-
-################################################################################
 # TRIMMING avec bbduk
 ################################################################################
 
@@ -149,17 +138,6 @@ if [ ! -f "${path}/QC_Trimming/${sample}_1_trimming_fastqc.html" ] && [ ! -f "${
   fastqc $R1_trim $R2_trim -o ${path}/QC_Trimming/ 2>&1 | tee -a $log_qc_trim
 else
   echo "Les fichiers fastqc_trim existent déjà"
-fi
-
-################################################################################
-# MULTIQC SUR LES RAW_TRIM
-################################################################################
-
-if [ ! -d "${path}/QC_Trimming/MultiQC_Trimming" ] ;then
-  echo "Le multiqc sur les fastqc n'existe pas";
-  multiqc ${path}/QC_Trimming --module fastqc --filename multiQC_Raw --outdir MultiQC_Raw
-else
-  echo "Le multiqc sur les fastqc existe déjà"
 fi
 
 ################################################################################
@@ -207,17 +185,6 @@ if [ ! -f "$stats" ];then
   samtools stats $aln_mem_sort > $stats
 else
   echo "Les fichiers stats existent déjà"
-fi
-
-################################################################################
-# MULTIQC SUR STATS FLAGSTAT ET IDXSTATS
-################################################################################
-
-if [ ! -d "${path}/QC_Alignment/MultiQC_Alignment" ] ;then
-  echo "Le multiqc sur les stats alignement n'existe pas";
-  multiqc ${path}/QC_Alignment --module samtools --filename multiQC_Alignement --outdir MultiQC_Alignement
-else
-  echo "Le multiqc sur les fastqc existe déjà"
 fi
 
 ################################################################################
