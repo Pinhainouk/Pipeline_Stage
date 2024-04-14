@@ -11,7 +11,7 @@ Ensuite, une courbe Precision/Recall est réalisé avec R (https://github.com/Il
 
 * R et Rstudio sont utilisés pour l'analyse des vcf dans un Rmarkdown (Analyse.Rmd)
 
-* IGV est utilisé pour visualisé les fichiers bigWig de bamCoverage.
+* IGV est utilisé pour visualiser les fichiers bigWig de bamCoverage.
 
 ## **Guide d'installation et versions des outils :**
 | Outils | Liens d'installation | Versions
