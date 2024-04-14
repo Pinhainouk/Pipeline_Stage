@@ -11,8 +11,10 @@ rmduplicates="${path}/Alignment/${sample}_aln_mem_sort_rmduplicates.bam"
 aln_mem_sort_bamcov="${path}/Analysis/bam_coverage/${sample}_aln_mem_sort_bamcov.bw"
 apply_bqsr="${path}/Alignment/${sample}_aln_mem_sort_rmduplicates_apply_bqsr.bam"
 apply_bqsr_bamcov="${path}/Analysis/bam_coverage/${sample}_aaply_bqsr_bamcov.bw"
+apply_bqsr_bamcov_bd="${path}/Analysis/bam_coverage/${sample}_aaply_bqsr_bamcov.bd"
 ref_bam="${path}/Elodie/Datas_ismael_ref/gold_40x_on_data_elodie.bam"
 ref_bamcov="${path}/Elodie/Datas_ismael_ref/bam_coverage/gold_40x_on_data_elodie_bamcov.bw"
+ref_bamcov_bd="${path}/Elodie/Datas_ismael_ref/bam_coverage/gold_40x_on_data_elodie_bamcov.bd"
 vcf_ref="${path}/Elodie/Datas_ismael_ref/gold_on_data_elodie_ismael_decomposed_normalize_uniq_chr.vcf"
 vcf_uniq="${path}/Analysis/${sample}_filtervarianttranches_2D_decomposed_normalized_uniq.vcf"
 bed="${path}/Elodie/01_data_elodie_V2.bed"
@@ -33,6 +35,7 @@ fi
 if [ ! -f "${apply_bqsr_bamcov}" ] ;then
   echo "Les bamcoverage sur les bam après rmduplicates n'existent pas";
 bamCoverage -b ${apply_bqsr} --binSize 10 -o ${apply_bqsr_bamcov}
+bamCoverage -b ${apply_bqsr} --binSize 10 -o ${apply_bqsr_bamcov_bd} -of bedgraph
 else
   echo "Les bamcoverage sur les bam après rmduplicates existent déjà"
 fi
@@ -42,6 +45,7 @@ done
 if [ ! -f "${ref_bamcov}" ] ;then
   echo "Le bamcoverage sur la référence n'existe pas";
 bamCoverage -b ${ref_bam} --binSize 10 -o ${ref_bamcov}
+bamCoverage -b ${ref_bam} --binSize 10 -o ${ref_bamcov_bd} -of bedgraph
 else
   echo "Le bamcoverage sur la référence existe déjà"
 fi

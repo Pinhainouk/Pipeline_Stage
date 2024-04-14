@@ -7,9 +7,11 @@ Ce document détaille l'analyse des fichiers obtenus avec le pipeline et leur co
 * L'analyse de la couverture est réalisée à partir des BAM avec bamCoverage de deepTools. La couverture est calculée avec le nombre de reads par fenêtre consécutive de 10 nucléotides (bin=10).
 
 * Pour comparer les VCF en sortie du pipeline et le vcf du Gold Standard, **Hap.py** est utilisé (outil d'Illumina) pour déterminer la sensibilité (recall), la spécificité (precision) et le score F1 afin de déterminer si le modèle est performant. Cet outil compare les génotypes au niveau des haplotypes (superlocus de 1 à 1000pb).
-Ensuite, une courbe ROC est réalisé avec R (https://github.com/Illumina/hap.py/blob/master/src/R/rocplot.Rscript).
+Ensuite, une courbe Precision/Recall est réalisé avec R (https://github.com/Illumina/hap.py/blob/master/src/R/rocplot.Rscript).
 
 * R et Rstudio sont utilisés pour l'analyse des vcf dans un Rmarkdown (Analyse.Rmd)
+
+* IGV est utilisé pour visualisé les fichiers bigWig de bamCoverage.
 
 ## **Guide d'installation et versions des outils :**
 | Outils | Liens d'installation | Versions
@@ -18,6 +20,7 @@ Ensuite, une courbe ROC est réalisé avec R (https://github.com/Illumina/hap.py
 **Hap.py**          | https://github.com/Illumina/hap.py?tab=readme-ov-file#installation<BR> | **v0.3.10**
 **R**               | https://cran.r-project.org/bin/linux/ubuntu/fullREADME.html#installing-r | **v4.1.2**
 **Rstudio**         | https://posit.co/download/rstudio-desktop/                             | **2023.12.0 Build 369**
+**IGV**		    | https://data.broadinstitute.org/igv/projects/downloads/2.16/           | **v2.16.2**
 
 ## **Problèmes rencontrés :**
 
@@ -51,17 +54,22 @@ hap.py /srv/gold_on_data_elodie_ismael_decomposed_normalize_uniq_copie_chr.vcf.g
 Lancer le Script_analyse.sh sans options.
 
 ## **Données de sortie** :
-- Fichiers bamCoverage BW avec piste de couverture.
-- Fichiers JSON, CSV et VCF générés par Hap.py
+- Fichiers bigWig (BW) de bamCoverage avec piste de couverture.
+- Fchiers bedGraph (BD) de bamCoverage avec nombres de reads par intervalle de 10 nucléotides.
+- Fichiers JSON, CSV et VCF générés par Hap.py.
 - Fichier HTML généré à partir du Rmarkdown avec les résultats d'analyse.
 
 ## **Glossaire :**
 
 BAM : Binary Alignment Map
 
+BD : bedGraph
+
 BW : bigWig
 
 CSV : Comma-Separated Values (fichier texte représentant des données tabulaires sous forme de valeurs séparées par des virgules)
+
+IGV : Integrative Genomic Viewer
 
 JSON : JavaScript Object Notation (représentation de données structurées basées sur des paires nom/valeur et des listes ordonnées)
 

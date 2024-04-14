@@ -43,6 +43,23 @@ vcf_40x = read.table("/home/elodie/Documents/Analysis/gold_40x_on_data_elodie_fi
 vcf_ref = read.table("/home/elodie/Documents/Elodie/Datas_ismael_ref/gold_on_data_elodie_ismael_decomposed_normalize_uniq_chr.vcf")
 ```
 
+### Import des BAM
+
+```{r}
+bd_12x = read.table("/home/elodie/Documents/Alignment/gold_12x_on_data_elodie_aln_mem_sort_rmduplicates_apply_bqsr.bd")
+bd_24x = read.table("/home/elodie/Documents/Alignment/gold_24x_on_data_elodie_aln_mem_sort_rmduplicates_apply_bqsr.bd")
+bd_40x = read.table("/home/elodie/Documents/Alignment/gold_40x_on_data_elodie_aln_mem_sort_rmduplicates_apply_bqsr.bd")
+bd_ref = read.table("/home/elodie/Documents/Elodie/Datas_ismael_ref/gold_40x_on_data_elodie.bd")
+```
+
+### Import des données fournies par Hap.py
+
+```{r}
+happy_12x_summury = read.table("/home/elodie/Documents/Analysis/Happy_12x/Happy_12x/ref-12x.summary.csv", header=TRUE, sep=',')
+happy_24x_summury = read.table("/home/elodie/Documents/Analysis/Happy_24x/Happy_24x/ref-24x.summary.csv", header=TRUE, sep=',')
+happy_40x_summury = read.table("/home/elodie/Documents/Analysis/Happy_40x/Happy_40x/ref-40x.summary.csv", header=TRUE, sep=',')
+```
+
 
 ```{r, include=FALSE}
 # Sélection des colonnes à analyser
@@ -221,7 +238,6 @@ vcf_all$taille_delins <- ifelse(nchar(vcf_all$ref) == 1 & nchar(vcf_all$alt) == 
 ```
 
 
-
 ```{r, include=FALSE}
 ## Formatage: ajout du type de SNV
 vcf_all$type_snv = ifelse (vcf_all$ref == "A" & vcf_all$alt == "G" & vcf_all$type == "SNV", "transition_A>G",
@@ -321,17 +337,59 @@ plot8 = ggplot(vcf_all %>% filter (type == "deletion"), aes(x = taille_delins, y
 plot_grid(plot7, plot8)
 ```
 
-## Exploration de la profondeur de lecture des variants {.tabset}
+## Exploration de la profondeur de lecture {.tabset}
+### Exploration de la profondeur de lecture des BAM
+
+```{r, include=FALSE}
+bd_12x$bam = "bam_12x"
+bd_24x$bam = "bam_24x"
+bd_40x$bam = "bam_40x"
+bd_ref$bam = "bam_ref"
+bd_all = rbind(bd_12x, bd_24x, bd_40x, bd_ref)
+names(bd_all)[1] = "chromosome"
+names(bd_all)[2] = "position_start"
+names(bd_all)[3] = "position_end"
+names(bd_all) [4] = "nombre_reads"
+bd_all$gene = ifelse(bd_all$chromosome == "chr1", "UTS2",
+                    ifelse(bd_all$chromosome == "1", "UTS2",
+                     ifelse(bd_all$chromosome == "chr4", "EPHA5",
+                           ifelse(bd_all$chromosome == "4", "EPHA5", 
+                            ifelse(bd_all$chromosome == "chr8", "LPL",
+                                    ifelse(bd_all$chromosome == "8", "LPL", NA))))))
+bd_all = na.omit(bd_all)
+```
+
+
+```{r}
+plot9 = ggplot(bd_all, aes(x = nombre_reads, y = gene)) + geom_boxplot(aes(fill=bam)) + theme_classic() + 
+  theme_classic() +
+  labs(x = "Profondeur par position (bin 10)", y = "gene", title = "Boxplots de la profondeur par gène dans les bam (intervalle 10nt)") + 
+  theme(plot.title = element_text(hjust = 0.5, size=14, face="bold"), plot.subtitle = element_text(hjust = 0.5)) + 
+  labs(fill = "Noms des gènes") +
+  scale_fill_manual(values = c("bam_12x" = "#de2d26", "bam_24x" ="#2c7fb8", "bam_40x" = "#2ca25f", "bam_ref" = "#E69F00"))
+plot9
+```
+
+```{r}
+plot10 = ggplot(bd_all, aes(x = nombre_reads, y = bam)) + geom_boxplot(aes(fill=gene)) + theme_classic() + 
+  theme_classic() +
+  labs(x = "Nombre de reads dans les bam", y = "bam", title = "Boxplots de la profondeur dans les bam (intervalle 10 nt)") + 
+  theme(plot.title = element_text(hjust = 0.5, size=14, face="bold"), plot.subtitle = element_text(hjust = 0.5)) + 
+  labs(fill = "Noms des gènes") +
+  scale_fill_manual(values = c("UTS2" = "#b2df8a", "LPL" ="#91bfdb", "EPHA5" = "#fdc086"))
+plot10
+```
+
 ### Profondeur de lecture des variants par gène
 
 ```{r, message=FALSE}
-plot9 = ggplot(vcf_12x_24x_40x, aes(x = as.numeric(DP), y = vcf)) + geom_boxplot(aes(fill=gene)) + theme_classic() + 
+plot11 = ggplot(vcf_12x_24x_40x, aes(x = as.numeric(DP), y = vcf)) + geom_boxplot(aes(fill=gene)) + theme_classic() + 
   theme_classic() +
   labs(x = "Profondeur de lecture des variants", y = "VCF", title = "Boxplots de la profondeur de lecture des variants par gène") + 
   theme(plot.title = element_text(hjust = 0.5, size=14, face="bold"), plot.subtitle = element_text(hjust = 0.5)) + 
   labs(fill = "Noms des gènes") +
   scale_fill_manual(values = c("UTS2" = "#b2df8a", "LPL" ="#91bfdb", "EPHA5" = "#fdc086"))
-plot9
+plot11
 ```
 
 ### Distribution de la profondeur par VCF
@@ -348,27 +406,27 @@ dp_40x$DP = as.numeric(dp_40x$DP)
 
 
 ```{r, fig.width=15, message=FALSE}
-plot10 = ggplot(dp_12x, aes(x = DP, y = nombre)) +
+plot12 = ggplot(dp_12x, aes(x = DP, y = nombre)) +
   geom_bar(stat = "identity", fill = "#de2d26") +
   geom_vline(xintercept = mean(dp_12x$DP), color = "#fd8d3c", linetype = "dashed", linewidth = 1) +
   labs(x = "Profondeur de lecture", y = "Nombre de variants", title = "VCF 12x") + 
   theme(plot.title = element_text(hjust = 0.5, size=14, face="bold"), axis.text.x = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5, size = 14, face = "bold")) + 
   theme(panel.grid = element_blank())
 
-plot11 = ggplot(dp_24x, aes(x = DP, y = nombre)) +
+plot13 = ggplot(dp_24x, aes(x = DP, y = nombre)) +
   geom_bar(stat = "identity", fill = "#2c7fb8") +
   geom_vline(xintercept = mean(dp_24x$DP), color = "#fd8d3c", linetype = "dashed", linewidth = 1) +
   labs(x = "Profondeur de lecture", y = "Nombre de variants", title = "VCF 24x") + 
   theme(plot.title = element_text(hjust = 0.5, size=14, face="bold"), axis.text.x = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5, size = 14, face = "bold")) + 
   theme(panel.grid = element_blank())
 
-plot12 = ggplot(dp_40x, aes(x = DP, y = nombre)) +
+plot14 = ggplot(dp_40x, aes(x = DP, y = nombre)) +
   geom_bar(stat = "identity", fill = "#2ca25f") +
   geom_vline(xintercept = mean(dp_40x$DP), color = "#fd8d3c", linetype = "dashed", linewidth = 1) +
   labs(x = "Profondeur de lecture", y = "Nombre de variants", title = "VCF 40x") + 
   theme(plot.title = element_text(hjust = 0.5, size=14, face="bold"), axis.text.x = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5),panel.grid = element_blank())
 
-plot_grid(plot10, plot11, plot12, ncol = 3, nrow = 1)
+plot_grid(plot12, plot13, plot14, ncol = 3, nrow = 1)
 ```
 
 ## Exploration de la VAF des VCF 12x, 24x et 40x {.tabset}
@@ -416,13 +474,13 @@ names(vcf_vaf)[3] = "nombre_variants"
 
 ### Nombre de variants par catégorie de VAF
 ```{r}
-plot13 = ggplot(vcf_vaf, aes(x = nombre_variants, y = cat_vaf , fill = vcf)) +
+plot15 = ggplot(vcf_vaf, aes(x = nombre_variants, y = cat_vaf , fill = vcf)) +
   geom_bar(position = position_fill(reverse=FALSE), stat="identity") +
   labs(title = "Répartition du nombre de variants par catégorie de VAF", x = "Nombre de variants", y = "Catégorie de VAF") +
   scale_fill_manual(values = c("#de2d26", "#2c7fb8", "#2ca25f")) +
   labs(fill = "VCF") +
   theme(plot.title = element_text(hjust = 0.5, size=14, face="bold"), plot.subtitle = element_text(hjust = 0.5), panel.grid = element_blank())
-ggplotly(plot13)
+ggplotly(plot15)
 ```
 
 # Exploration des variants en commun dans les 4 VCF {.tabset}
@@ -444,7 +502,7 @@ variants_list = list(vcf_12x = unique(vcf_12x$variants), vcf_24x = unique(vcf_24
 
 
 ```{r, fig.width=8, fig.height=6}
-plot14 = display_venn(variants_list, category.names = c("vcf_12x" , "vcf_24x" , "vcf_40x", "vcf_ref"), 
+plot16 = display_venn(variants_list, category.names = c("vcf_12x" , "vcf_24x" , "vcf_40x", "vcf_ref"), 
         fill = c("#de2d26", "#2c7fb8", "#2ca25f", "#E69F00"), cat.cex = 1.2,
         cat.fontface = "bold",
         cat.default.pos = "outer",
@@ -505,7 +563,7 @@ names(cat_vcf_all_nombre)[3]="nombre"
 
 ```{r, include=FALSE}
 cat_vcf_all_nombre$categorie = factor(x = cat_vcf_all_nombre$categorie, levels = c("cat_all", "cat_12x_24x_40", "cat_24x_40x_ref", "cat_24x_40x", "cat_40x", "cat_12x", "cat_ref", "cat_24x", "cat_12x_40x_ref", "cat_24x_ref", "cat_40x_ref", "cat_12x_40x"))
-plot15 = ggplot(cat_vcf_all_nombre, aes(fill=type, x=categorie, y=nombre)) +
+plot17 = ggplot(cat_vcf_all_nombre, aes(fill=type, x=categorie, y=nombre)) +
   geom_bar(position = position_fill(reverse=FALSE), stat="identity") +
   scale_fill_manual(values = c("#bebada", "#ffffb3", "#8dd3c7", "#170f0f")) +
    labs(title = "Nombre de variants par catégories et par type de variants") +
@@ -523,31 +581,31 @@ cat_vcf_all_genes$categorie = factor(x = cat_vcf_all_genes$categorie, levels = c
 
 
 ```{r, include=FALSE}
-plot16 = ggplot(cat_vcf_all_genes, aes(fill=gene, x=categorie, y=nombre)) +
+plot18 = ggplot(cat_vcf_all_genes, aes(fill=gene, x=categorie, y=nombre)) +
   geom_bar(position = position_fill(reverse=FALSE), stat="identity") +
   scale_fill_manual(values = c("UTS2" = "#b2df8a", "LPL" ="#91bfdb", "EPHA5" = "#fdc086")) +
   labs(title = "Nombre de variants par catégories et par gènes") +
   labs(fill = "Type de variants", x = "Nombre de variants", y = "Noms des gènes") + 
   theme(panel.grid = element_blank(), plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle=45, vjust=1, hjust=1))
-ggplotly(plot16) %>% style(hoverlabel = cat_vcf_all_genes$nombre)
+ggplotly(plot18) %>% style(hoverlabel = cat_vcf_all_genes$nombre)
 ```
 
 ## Upsetplot
 
 ```{r, fig.width=10, fig.height=8, fig.align='left'}
-plot17 = UpSetR::upset(fromList(variants_list), order.by = "freq", text.scale = 2, point.size = 5, sets.bar.color = "#999999", main.bar.color = "#fc8d62")
-plot17
+plot19 = UpSetR::upset(fromList(variants_list), order.by = "freq", text.scale = 2, point.size = 5, sets.bar.color = "#999999", main.bar.color = "#fc8d62")
+plot19
 ```
 
 ```{r fig.height=10, fig.width=10}
-plot_grid(plot15, plot16, ncol = 1)
+plot_grid(plot17, plot18, ncol = 1)
 ```
 
 ```{r, fig.width=8, fig.height=8, include=FALSE}
 ## Exploration des variants en commun dans les 3 VCF générés par le pipeline
 variants_list_12x_24x_40x = list(vcf_12x = unique(vcf_12x$variants), vcf_24x = unique(vcf_24x$variants), vcf_40x = unique(vcf_40x$variants))
 
-plot18 = display_venn(variants_list_12x_24x_40x, category.names = c("vcf_12x" , "vcf_40x", "vcf_24x"),
+plot20 = display_venn(variants_list_12x_24x_40x, category.names = c("vcf_12x" , "vcf_40x", "vcf_24x"),
   fill = c("#de2d26", "#2c7fb8", "#2ca25f"), cat.cex = 1.2,
         cat.fontface = "bold",
         cat.default.pos = "outer",
@@ -562,13 +620,7 @@ Plus le recall est élevé, plus le modèle repère des positifs.
 Plus la précision est élevée, moins le modèle se trompe sur les positifs (moins il y a de faux positifs).
 Plus le score F1 est élevé, plus le modèle est performant.
 
-## Courbe ROC 
-
-```{r}
-happy_12x_summury = read.table("/home/elodie/Documents/Analysis/Happy_12x/Happy_12x/ref-12x.summary.csv", header=TRUE, sep=',')
-happy_24x_summury = read.table("/home/elodie/Documents/Analysis/Happy_24x/Happy_24x/ref-24x.summary.csv", header=TRUE, sep=',')
-happy_40x_summury = read.table("/home/elodie/Documents/Analysis/Happy_40x/Happy_40x/ref-40x.summary.csv", header=TRUE, sep=',')
-```
+## Courbes Precision/Recall
 
 ```{r, include=FALSE}
 #code récupéré sur Github Hap.py
@@ -668,7 +720,7 @@ plot_data = function(pdata, is.PR=FALSE) {
     print(pdata)
   }
   plt = ggplot(pdata, aes_string(x=xaxis, y=yaxis, color="name")) + 
-    labs(title = paste("Courbe ROC", pdata$Type)[[1]])
+    labs(title = paste("Courbe Precision/Recall", pdata$Type)[[1]])
   facet_wrap(~Type)
   
   # ROC lines
@@ -733,7 +785,7 @@ plot_roc_indel = plot_data(roc_indel, is.PR=TRUE)
 plot_grid(plot_roc_snp, plot_roc_indel, nrow=2, ncol=1)
 ```
 
-# Lolliplot - représentation des variants sur les gènes
+# Lolliplot - représentation des variants sur les gènes {.tabset}
 
 ```{r, include=FALSE}
 gold_12x_UTS2 = "/home/elodie/Documents/Analysis/VCF_lolliplot/gold_12x_on_data_elodie_filtervarianttranches_2D_decomposed_normalized_uniq_UTS2.vcf.gz"
@@ -920,7 +972,7 @@ plot_LPL = create_lolliplots(gold_12x_LPL, gold_24x_LPL, gold_40x_LPL, gold_ref_
 plot_LPL
 ```
 
-# Annotation fonctionnelle
+# Annotation fonctionnelle {.tabset}
 
 ```{r, include=FALSE}
 vcf_12x_annot = read.table("/home/elodie/Documents/Analysis/gold_12x_on_data_elodie_filtervarianttranches_2D_decomposed_normalized_funcotated.vcf")
@@ -961,25 +1013,29 @@ vcf_annot_all = rbind(vcf_12x_annot,vcf_24x_annot,vcf_40x_annot,vcf_ref_annot)
 view(vcf_annot_all)
 ```
 
+## Annotation par VCF
+
 ```{r}
 nombre_annot = vcf_annot_all %>% group_by(vcf, gene) %>% dplyr::count(annot)
 
-plot19 = ggplot(nombre_annot, aes(fill=vcf, y=annot, x=n)) +
+plot21 = ggplot(nombre_annot, aes(fill=vcf, y=annot, x=n)) +
   geom_bar(position = position_fill(reverse=FALSE), stat="identity") +
   scale_fill_manual(values = c("#de2d26", "#2c7fb8", "#2ca25f", "#E69F00")) +
   labs(fill = "Nom des VCF", x = "Nombre de variants", y = "Annotation") + 
   theme(plot.title = element_text(hjust = 0.5, size=14, face="bold"), panel.grid = element_blank()) + 
   labs(title = "Annotation des variants par VCF") 
-ggplotly(plot19)
+ggplotly(plot21)
 ```
 
+## Annotation par gène
+
 ```{r}
-plot19 = ggplot(nombre_annot, aes(fill=gene, y=annot, x=n)) +
+plot22 = ggplot(nombre_annot, aes(fill=gene, y=annot, x=n)) +
   geom_bar(position = position_fill(reverse=FALSE), stat="identity") +
   scale_fill_manual(values = c("#fdc086", "#91bfdb", "#b2df8a")) +
   labs(fill = "Nom des gènes", x = "Nombre de variants", y = "Annotation") + 
   theme(plot.title = element_text(hjust = 0.5, size=14, face="bold"), panel.grid = element_blank()) + 
   labs(title = "Annotation des variants par gène") 
-ggplotly(plot19)
+ggplotly(plot22)
 ```
 
