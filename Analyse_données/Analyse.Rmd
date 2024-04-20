@@ -135,8 +135,7 @@ plot1 = ggplot(nombre_variants, aes(fill=type, y=vcf, x=nombre)) +
   geom_bar(position = "stack", stat = "identity") + 
   scale_fill_manual(values = c("#bebada", "#ffffb3", "#8dd3c7", "#170f0f")) +
   labs(fill = "Type de variants", x = "Nombre de variants", y = "VCF") +
-  theme(plot.title = element_text(hjust = 0.5, size=14, face="bold"), panel.grid = element_blank()) + 
-  labs(title = "Nombre et type de variant par VCF") 
+  theme(plot.title = element_text(hjust = 0.5, size=18, face="bold"), axis.text.x = element_text(size = 14, face = "bold"), axis.text.y = element_text(size = 14, face = "bold"), axis.title.x = element_text(size = 16, face="bold"), axis.title.y = element_text(size = 16, face="bold"), legend.text = element_text(size = 14), legend.title = element_text(size = 14, face = "bold"), panel.grid = element_blank()) +   labs(title = "Nombre et type de variants par VCF")
 ggplotly(plot1)
 ```
 
@@ -201,8 +200,9 @@ plot2 = ggplot(nombre_variants_par_gene, aes(fill=gene, y=vcf, x=nombre)) +
   geom_bar(position="stack", stat="identity") +
   scale_fill_manual(values = c("#fdc086", "#91bfdb", "#b2df8a")) +
   labs(fill = "Nom des gènes", x = "Nombre de variants", y = "VCF") + 
-  theme(plot.title = element_text(hjust = 0.5, size=14, face="bold"), panel.grid = element_blank()) + 
+  theme(plot.title = element_text(hjust = 0.5, size=18, face="bold"), axis.text.x = element_text(size = 14, face = "bold"), axis.text.y = element_text(size = 14, face = "bold"), axis.title.x = element_text(size = 16, face="bold"), axis.title.y = element_text(size = 16, face="bold"), legend.text = element_text(size = 14), legend.title = element_text(size = 14, face = "bold"), panel.grid = element_blank()) +
   labs(title = "Nombre de variants par gène et par VCF") 
+
 ggplotly(plot2)
 ```
 Le nombre de variants est identique dans chaque VCF pour les gènes UTS2 et LPL mais le nombre varie pour le plus grand gène EPHA5.
@@ -215,10 +215,10 @@ nombre_variants_par_gene$vcf_nom_genes = paste(nombre_variants_par_gene$vcf, nom
 plot3 = ggplot(nombre_variants_par_gene, aes(fill=type, y=vcf_nom_genes, x=nombre)) +
   geom_bar(position = position_fill(reverse=FALSE), stat="identity") +
   scale_fill_manual(values = c("#bebada", "#ffffb3", "#8dd3c7", "#170f0f")) +
-  labs(title = "Nombre de variants par gène, par VCF et par type de variant") +
-  labs(fill = "Type de variants", x = "Nombre de variants", y = "VCF") + 
-  theme(plot.title = element_text(hjust = 0.5, size=14, face="bold"), panel.grid = element_blank())
-  
+  labs(title = "Nombre de variants par gène, par VCF et par type de variants") +
+  labs(fill = "Type de variants", x = "Proportion", y = "VCF") + 
+  theme(plot.title = element_text(hjust = 0.5, size=18, face="bold"), axis.text.x = element_text(size = 13, face = "bold"), axis.text.y = element_text(size = 13, face = "bold"), axis.title.x = element_text(size = 16, face="bold"), axis.title.y = element_text(size = 16, face="bold"), legend.text = element_text(size = 14), legend.title = element_text(size = 14, face = "bold"), panel.grid = element_blank())
+
 ggplotly(plot3)
 ```
 
@@ -271,9 +271,8 @@ nombre_type_snv <- nombre_type_snv %>% mutate(vcf_gene = paste(vcf, gene, sep = 
 plot4 = ggplot(nombre_type_snv[!is.na(nombre_type_snv$type), ], aes(fill = type, y = vcf, x = nombre))+
   geom_bar(position = position_fill(reverse=FALSE), stat="identity") +
   scale_fill_manual(values = c("#fc9272", "#9ebcda")) +
-  labs(title = "Type de SNV par VCF", x = "Type de substitutions", y = "Nombre de substitutions") +
-  labs(fill = "Type de SNV") +
-  theme(plot.title = element_text(hjust = 0.5, size=14, face="bold"), panel.grid = element_blank())
+  labs(title = "Type de SNV par VCF", x = "Proportion", y = "VCF", fill = "Type de SNV") +
+ theme(plot.title = element_text(hjust = 0.5, size=18, face="bold"), axis.text.x = element_text(size = 14, face = "bold"), axis.text.y = element_text(size = 14, face = "bold"), axis.title.x = element_text(size = 16, face="bold"), axis.title.y = element_text(size = 16, face="bold"), legend.text = element_text(size = 14), legend.title = element_text(size = 14, face = "bold"), panel.grid = element_blank())
 ggplotly(plot4)
 ```
 
@@ -283,14 +282,12 @@ Valeurs cohérentes dans tous les VCF.
 
 ### Nombre et type de transitions/transversions par VCF et par gène
 
-```{r}
+```{r, fig.width=10}
 plot5 = ggplot(nombre_type_snv[!is.na(nombre_type_snv$type_snv), ], aes(fill = type_snv, y = vcf_gene, x = nombre)) +
   geom_bar(position = position_fill(reverse=FALSE), stat="identity") +
-  labs(title = "Répartition des types de SNV par VCF et par gène", x = "Nombre", y = "VCF et gène") +
   scale_fill_manual(values = c("#a6cee3", "#1f78b4","#b2df8a", "#33a02c", "#fb9a99", "#e31a1c", "#fdbf6f", "#ff7f00", "#cab2d6", "#6a3d9a", "#ffff99", "#b15928")) +
-  labs(fill = "Type de SNV", x = "Nombre", y = "VCF") +
-  theme(plot.title = element_text(hjust = 0.5, size=14, face="bold"), plot.subtitle = element_text(hjust = 0.5)) + 
-  theme(panel.grid = element_blank())
+  labs(title = "Type de transitions/transversions par VCF et par gènes", fill = "Type de SNV", x = "Proportion", y = "VCF_Gène") +
+  theme(plot.title = element_text(hjust = 0.5, size=18, face="bold"), axis.text.x = element_text(size = 13, face = "bold"), axis.text.y = element_text(size = 13, face = "bold"), axis.title.x = element_text(size = 16, face="bold"), axis.title.y = element_text(size = 16, face="bold"), legend.text = element_text(size = 14), legend.title = element_text(size = 14, face = "bold"), panel.grid = element_blank())
 ggplotly(plot5)
 ```
 
@@ -304,7 +301,7 @@ plot6 = ggplot(vcf_all %>% filter (type == "insertion" | type == "deletion"), ae
   geom_boxplot(aes(fill=type)) + 
   theme_classic() + 
   labs(x = "Taille des delins", y = "VCF", title = "Boxplots de la taille des insertions et délétions par VCF") + 
-  theme(plot.title = element_text(hjust = 0.5, size=14, face="bold"), plot.subtitle = element_text(hjust = 0.5)) + 
+  theme(plot.title = element_text(hjust = 0.5, size=18, face="bold"), axis.title.x = element_text(size = 16, face = "bold"), axis.title.y = element_text(size = 16, face = "bold"), axis.text.x = element_text(size = 14, face = "bold"), axis.text.y = element_text(size = 14, face="bold"), legend.text = element_text(size = 14), legend.title = element_text(size = 14, face = "bold"), plot.subtitle = element_text(hjust = 0.5)) + 
   labs(fill = "Type de delins") +
   scale_fill_manual(values = c("deletion" = "#bebada", "insertion" ="#ffffb3"))
 plot6
@@ -317,24 +314,40 @@ L'interquartile est plus petit également pour la taille des insertions du VCF d
 Il y a moins de disparité des valeurs pour le VCF de référence.
 
 ### Taille des insertions et délétions par VCF et par gène
-```{r, fig.width=14, fig.height=6}
-plot7 = ggplot(vcf_all %>% filter (type == "insertion"), aes(x = taille_delins, y = vcf)) +
-  geom_boxplot(aes(fill=gene)) +
+```{r, fig.width=16, fig.height=6}
+
+plot7 = ggplot(vcf_all %>% filter (type == "insertion"), aes(x = taille_delins, y = vcf, fill=gene)) +
+  geom_boxplot() +
   theme_classic() +
-  labs(x = "Taille des insertions", y = "VCF", title = "Boxplots de la taille des insertions par VCF et par gène") + 
-  theme(plot.title = element_text(hjust = 0.5, size=14, face="bold"), plot.subtitle = element_text(hjust = 0.5)) + 
-  labs(fill = "Noms des gènes") +
+  labs(x = "Taille des insertions", y = "VCF", title = "Boxplots de la taille des insertions par VCF et par gène",
+       fill = "Noms des gènes") + 
+  theme(plot.title = element_text(hjust = 0.5, size=18, face="bold"), 
+        axis.title.x = element_text(size = 16, face = "bold"), 
+        axis.title.y = element_text(size = 16, face = "bold"), 
+        axis.text.x = element_text(size = 14, face = "bold"), 
+        axis.text.y = element_text(size = 14, face="bold"), 
+        legend.text = element_text(size = 14), 
+        legend.title = element_text(size = 14, face = "bold"), 
+        plot.subtitle = element_text(hjust = 0.5)) +
   scale_fill_manual(values = c("EPHA5" = "#fdc086", "LPL" ="#91bfdb", "UTS2" = "#b2df8a"))
 
-plot8 = ggplot(vcf_all %>% filter (type == "deletion"), aes(x = taille_delins, y = vcf)) +
-  geom_boxplot(aes(fill=gene)) +
+plot8 = ggplot(vcf_all %>% filter (type == "deletion"), aes(x = taille_delins, y = vcf, fill=gene)) +
+  geom_boxplot() +
   theme_classic() +
-  labs(x = "Taille des délétions", y = "VCF", title = "Boxplots de la taille des délétions par VCF et par gène") + 
-  theme(plot.title = element_text(hjust = 0.5, size=14, face="bold"), plot.subtitle = element_text(hjust = 0.5)) + 
-  labs(fill = "Noms des gènes") +
+  labs(x = "Taille des délétions", y = "VCF", title = "Boxplots de la taille des délétions par VCF et par gène",
+       fill = "Noms des gènes") + 
+  theme(plot.title = element_text(hjust = 0.5, size=18, face="bold"), 
+        axis.title.x = element_text(size = 16, face = "bold"), 
+        axis.title.y = element_text(size = 16, face = "bold"), 
+        axis.text.x = element_text(size = 14, face = "bold"), 
+        axis.text.y = element_text(size = 14, face="bold"), 
+        legend.text = element_text(size = 14), 
+        legend.title = element_text(size = 14, face = "bold"), 
+        plot.subtitle = element_text(hjust = 0.5)) +
   scale_fill_manual(values = c("EPHA5" = "#fdc086", "LPL" ="#91bfdb", "UTS2" = "#b2df8a"))
 
-plot_grid(plot7, plot8)
+plot9 = plot_grid(plot7, plot8)
+plot9
 ```
 
 ## Exploration de la profondeur de lecture {.tabset}
@@ -360,33 +373,31 @@ bd_all = na.omit(bd_all)
 ```
 
 
-```{r}
-plot9 = ggplot(bd_all, aes(x = nombre_reads, y = gene)) + geom_boxplot(aes(fill=bam)) + theme_classic() + 
+```{r, fig.height=6}
+plot9 = ggplot(bd_all, aes(x = nombre_reads, y = gene, fill = bam)) + geom_boxplot() + theme_classic() + 
   theme_classic() +
-  labs(x = "Profondeur par position (bin 10)", y = "gene", title = "Boxplots de la profondeur par gène dans les bam (intervalle 10nt)") + 
-  theme(plot.title = element_text(hjust = 0.5, size=14, face="bold"), plot.subtitle = element_text(hjust = 0.5)) + 
-  labs(fill = "Noms des gènes") +
+  labs(x = "Nombre de reads par intervalle de 10nt", y = "Gènes", title = "Boxplots de la profondeur par gène dans les BAM", fill = "Noms des gènes") + 
+   theme(plot.title = element_text(hjust = 0.5, size=18, face="bold"), axis.title.x = element_text(size = 16, face = "bold"), axis.title.y = element_text(size = 16, face = "bold"), axis.text.x = element_text(size = 14, face = "bold"), axis.text.y = element_text(size = 14, face="bold"), legend.text = element_text(size = 14), legend.title = element_text(size = 14, face = "bold"), plot.subtitle = element_text(hjust = 0.5)) + 
   scale_fill_manual(values = c("bam_12x" = "#de2d26", "bam_24x" ="#2c7fb8", "bam_40x" = "#2ca25f", "bam_ref" = "#E69F00"))
 plot9
 ```
 
-```{r}
+```{r, fig.height=6}
 plot10 = ggplot(bd_all, aes(x = nombre_reads, y = bam)) + geom_boxplot(aes(fill=gene)) + theme_classic() + 
   theme_classic() +
-  labs(x = "Nombre de reads dans les bam", y = "bam", title = "Boxplots de la profondeur dans les bam (intervalle 10 nt)") + 
-  theme(plot.title = element_text(hjust = 0.5, size=14, face="bold"), plot.subtitle = element_text(hjust = 0.5)) + 
-  labs(fill = "Noms des gènes") +
+  labs(x = "Nombre de reads par intervalle de 10nt", y = "BAM", title = "Boxplots de la profondeur par gène dans les BAM", fill = "Nom des gènes") + 
+ theme(plot.title = element_text(hjust = 0.5, size=18, face="bold"), axis.title.x = element_text(size = 16, face = "bold"), axis.title.y = element_text(size = 16, face = "bold"), axis.text.x = element_text(size = 14, face = "bold"), axis.text.y = element_text(size = 14, face="bold"), legend.text = element_text(size = 14), legend.title = element_text(size = 14, face = "bold"), plot.subtitle = element_text(hjust = 0.5)) + 
   scale_fill_manual(values = c("UTS2" = "#b2df8a", "LPL" ="#91bfdb", "EPHA5" = "#fdc086"))
 plot10
 ```
 
 ### Profondeur de lecture des variants par gène
 
-```{r, message=FALSE}
+```{r, message=FALSE, fig.height=6}
 plot11 = ggplot(vcf_12x_24x_40x, aes(x = as.numeric(DP), y = vcf)) + geom_boxplot(aes(fill=gene)) + theme_classic() + 
   theme_classic() +
   labs(x = "Profondeur de lecture des variants", y = "VCF", title = "Boxplots de la profondeur de lecture des variants par gène") + 
-  theme(plot.title = element_text(hjust = 0.5, size=14, face="bold"), plot.subtitle = element_text(hjust = 0.5)) + 
+  theme(plot.title = element_text(hjust = 0.5, size=18, face="bold"), axis.title.x = element_text(size = 16, face = "bold"), axis.title.y = element_text(size = 16, face = "bold"), axis.text.x = element_text(size = 14, face = "bold"), axis.text.y = element_text(size = 14, face="bold"), legend.text = element_text(size = 14), legend.title = element_text(size = 14, face = "bold"), plot.subtitle = element_text(hjust = 0.5)) + 
   labs(fill = "Noms des gènes") +
   scale_fill_manual(values = c("UTS2" = "#b2df8a", "LPL" ="#91bfdb", "EPHA5" = "#fdc086"))
 plot11
@@ -409,22 +420,20 @@ dp_40x$DP = as.numeric(dp_40x$DP)
 plot12 = ggplot(dp_12x, aes(x = DP, y = nombre)) +
   geom_bar(stat = "identity", fill = "#de2d26") +
   geom_vline(xintercept = mean(dp_12x$DP), color = "#fd8d3c", linetype = "dashed", linewidth = 1) +
-  labs(x = "Profondeur de lecture", y = "Nombre de variants", title = "VCF 12x") + 
-  theme(plot.title = element_text(hjust = 0.5, size=14, face="bold"), axis.text.x = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5, size = 14, face = "bold")) + 
-  theme(panel.grid = element_blank())
+  labs(x = "Nombre de reads par variant", y = "Nombre de variants", title = "VCF 12x") + 
+   theme(plot.title = element_text(hjust = 0.5, size=18, face="bold"), axis.text.x = element_text(size = 13, face = "bold"), axis.text.y = element_text(size = 13, face = "bold"), axis.title.x = element_text(size = 16, face="bold"), axis.title.y = element_text(size = 16, face="bold"), legend.text = element_text(size = 14), legend.title = element_text(size = 14, face = "bold"), panel.grid = element_blank())
 
 plot13 = ggplot(dp_24x, aes(x = DP, y = nombre)) +
   geom_bar(stat = "identity", fill = "#2c7fb8") +
   geom_vline(xintercept = mean(dp_24x$DP), color = "#fd8d3c", linetype = "dashed", linewidth = 1) +
-  labs(x = "Profondeur de lecture", y = "Nombre de variants", title = "VCF 24x") + 
-  theme(plot.title = element_text(hjust = 0.5, size=14, face="bold"), axis.text.x = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5, size = 14, face = "bold")) + 
-  theme(panel.grid = element_blank())
+  labs(x = "Nombre de reads par variant", y = "Nombre de variants", title = "VCF 24x") + 
+   theme(plot.title = element_text(hjust = 0.5, size=18, face="bold"), axis.text.x = element_text(size = 13, face = "bold"), axis.text.y = element_text(size = 13, face = "bold"), axis.title.x = element_text(size = 16, face="bold"), axis.title.y = element_text(size = 16, face="bold"), legend.text = element_text(size = 14), legend.title = element_text(size = 14, face = "bold"), panel.grid = element_blank())
 
 plot14 = ggplot(dp_40x, aes(x = DP, y = nombre)) +
   geom_bar(stat = "identity", fill = "#2ca25f") +
   geom_vline(xintercept = mean(dp_40x$DP), color = "#fd8d3c", linetype = "dashed", linewidth = 1) +
-  labs(x = "Profondeur de lecture", y = "Nombre de variants", title = "VCF 40x") + 
-  theme(plot.title = element_text(hjust = 0.5, size=14, face="bold"), axis.text.x = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5),panel.grid = element_blank())
+  labs(x = "Nombre de reads par variants", y = "Nombre de variants", title = "VCF 40x") + 
+   theme(plot.title = element_text(hjust = 0.5, size=18, face="bold"), axis.text.x = element_text(size = 13, face = "bold"), axis.text.y = element_text(size = 13, face = "bold"), axis.title.x = element_text(size = 16, face="bold"), axis.title.y = element_text(size = 16, face="bold"), legend.text = element_text(size = 14), legend.title = element_text(size = 14, face = "bold"), panel.grid = element_blank())
 
 plot_grid(plot12, plot13, plot14, ncol = 3, nrow = 1)
 ```
@@ -476,10 +485,10 @@ names(vcf_vaf)[3] = "nombre_variants"
 ```{r}
 plot15 = ggplot(vcf_vaf, aes(x = nombre_variants, y = cat_vaf , fill = vcf)) +
   geom_bar(position = position_fill(reverse=FALSE), stat="identity") +
-  labs(title = "Répartition du nombre de variants par catégorie de VAF", x = "Nombre de variants", y = "Catégorie de VAF") +
+  labs(title = "Proportion de variants par catégorie de VAF", x = "Proportion", y = "Catégorie de VAF") +
   scale_fill_manual(values = c("#de2d26", "#2c7fb8", "#2ca25f")) +
   labs(fill = "VCF") +
-  theme(plot.title = element_text(hjust = 0.5, size=14, face="bold"), plot.subtitle = element_text(hjust = 0.5), panel.grid = element_blank())
+  theme(plot.title = element_text(hjust = 0.5, size=18, face="bold"), axis.text.x = element_text(size = 13, face = "bold"), axis.text.y = element_text(size = 13, face = "bold"), axis.title.x = element_text(size = 16, face="bold"), axis.title.y = element_text(size = 16, face="bold"), legend.text = element_text(size = 14), legend.title = element_text(size = 14, face = "bold"), panel.grid = element_blank())
 ggplotly(plot15)
 ```
 
@@ -566,9 +575,9 @@ cat_vcf_all_nombre$categorie = factor(x = cat_vcf_all_nombre$categorie, levels =
 plot17 = ggplot(cat_vcf_all_nombre, aes(fill=type, x=categorie, y=nombre)) +
   geom_bar(position = position_fill(reverse=FALSE), stat="identity") +
   scale_fill_manual(values = c("#bebada", "#ffffb3", "#8dd3c7", "#170f0f")) +
-   labs(title = "Nombre de variants par catégories et par type de variants") +
-  labs(fill = "Type de variants", x = "Nombre de variants", y = "Catégories de VCF") + 
-  theme(panel.grid = element_blank(), plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle=45, vjust=1, hjust=1))
+   labs(title = "Proportion de variants par catégories et par type") +
+  labs(fill = "Type de variants", x = "Catégorie de VCF", y = "Proportion") + 
+  theme(plot.title = element_text(hjust = 0.5, size=18, face="bold"), axis.text.x = element_text(angle=45, vjust=1, hjust=1, size = 13, face = "bold"), axis.text.y = element_text(size = 13, face = "bold"), axis.title.x = element_text(size = 16, face="bold"), axis.title.y = element_text(size = 16, face="bold"), legend.text = element_text(size = 14), legend.title = element_text(size = 14, face = "bold"), panel.grid = element_blank())
 ```
 
 ```{r, include=FALSE}
@@ -584,20 +593,21 @@ cat_vcf_all_genes$categorie = factor(x = cat_vcf_all_genes$categorie, levels = c
 plot18 = ggplot(cat_vcf_all_genes, aes(fill=gene, x=categorie, y=nombre)) +
   geom_bar(position = position_fill(reverse=FALSE), stat="identity") +
   scale_fill_manual(values = c("UTS2" = "#b2df8a", "LPL" ="#91bfdb", "EPHA5" = "#fdc086")) +
-  labs(title = "Nombre de variants par catégories et par gènes") +
-  labs(fill = "Type de variants", x = "Nombre de variants", y = "Noms des gènes") + 
-  theme(panel.grid = element_blank(), plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle=45, vjust=1, hjust=1))
+  labs(title = "Proportion de variants par catégories et par gènes") +
+  labs(fill = "Nom des gènes", x = "Catégorie de VCF", y = "Proportion") + 
+  theme(plot.title = element_text(hjust = 0.5, size=18, face="bold"), axis.text.x = element_text(angle=45, vjust=1, hjust=1, size = 13, face = "bold"), axis.text.y = element_text(size = 13, face = "bold"), axis.title.x = element_text(size = 16, face="bold"), axis.title.y = element_text(size = 16, face="bold"), legend.text = element_text(size = 14), legend.title = element_text(size = 14, face = "bold"), panel.grid = element_blank())
+
 ggplotly(plot18) %>% style(hoverlabel = cat_vcf_all_genes$nombre)
 ```
 
 ## Upsetplot
 
 ```{r, fig.width=10, fig.height=8, fig.align='left'}
-plot19 = UpSetR::upset(fromList(variants_list), order.by = "freq", text.scale = 2, point.size = 5, sets.bar.color = "#999999", main.bar.color = "#fc8d62")
+plot19 = UpSetR::upset(fromList(variants_list), order.by = "freq", text.scale = 2, point.size = 5, sets.bar.color = "#9ecae1", main.bar.color = "#3182bd")
 plot19
 ```
 
-```{r fig.height=10, fig.width=10}
+```{r fig.height=12, fig.width=10}
 plot_grid(plot17, plot18, ncol = 1)
 ```
 
@@ -1010,32 +1020,32 @@ vcf_24x_annot = formatage_annot(vcf_24x_annot, "vcf_24x")
 vcf_40x_annot = formatage_annot(vcf_40x_annot, "vcf_40x")
 vcf_ref_annot = formatage_annot(vcf_ref_annot, "vcf_ref")
 vcf_annot_all = rbind(vcf_12x_annot,vcf_24x_annot,vcf_40x_annot,vcf_ref_annot)
-view(vcf_annot_all)
 ```
 
 ## Annotation par VCF
 
-```{r}
+```{r, fig.width=11, fig.height=10}
 nombre_annot = vcf_annot_all %>% group_by(vcf, gene) %>% dplyr::count(annot)
 
-plot21 = ggplot(nombre_annot, aes(fill=vcf, y=annot, x=n)) +
-  geom_bar(position = position_fill(reverse=FALSE), stat="identity") +
+plot21 = ggplot(nombre_annot, aes(fill=vcf, y=n, x=annot)) +
+  geom_bar(position="dodge", stat="identity") +
   scale_fill_manual(values = c("#de2d26", "#2c7fb8", "#2ca25f", "#E69F00")) +
-  labs(fill = "Nom des VCF", x = "Nombre de variants", y = "Annotation") + 
-  theme(plot.title = element_text(hjust = 0.5, size=14, face="bold"), panel.grid = element_blank()) + 
-  labs(title = "Annotation des variants par VCF") 
-ggplotly(plot21)
+  labs(fill = "VCF", x = "Types d'annotation", y = "Nombre de variants", title = "Annotation des variants par VCF") + 
+  theme(plot.title = element_text(hjust = 0.5, size=18, face="bold"), axis.text.x = element_text(angle=45, vjust=1, hjust=1, size = 13, face = "bold"), axis.text.y = element_text(size = 13, face = "bold"), axis.title.x = element_text(size = 16, face="bold"), axis.title.y = element_text(size = 16, face="bold"), legend.text = element_text(size = 14), legend.title = element_text(size = 14, face = "bold"), panel.grid = element_blank())
 ```
 
 ## Annotation par gène
 
-```{r}
-plot22 = ggplot(nombre_annot, aes(fill=gene, y=annot, x=n)) +
-  geom_bar(position = position_fill(reverse=FALSE), stat="identity") +
+```{r, fig.width=11, fig.height=10}
+plot22 = ggplot(nombre_annot, aes(fill=gene, y=n, x=annot)) +
+  geom_bar(position="dodge", stat="identity") +
   scale_fill_manual(values = c("#fdc086", "#91bfdb", "#b2df8a")) +
-  labs(fill = "Nom des gènes", x = "Nombre de variants", y = "Annotation") + 
-  theme(plot.title = element_text(hjust = 0.5, size=14, face="bold"), panel.grid = element_blank()) + 
-  labs(title = "Annotation des variants par gène") 
-ggplotly(plot22)
+  labs(fill = "Nom des gènes", x = "Types d'annotation", y = "Nombre de variants", title = "Annotation des variants par gènes") + 
+  theme(plot.title = element_text(hjust = 0.5, size=18, face="bold"), axis.text.x = element_text(angle=45, vjust=1, hjust=1, size = 13, face = "bold"), axis.text.y = element_text(size = 13, face = "bold"), axis.title.x = element_text(size = 16, face="bold"), axis.title.y = element_text(size = 16, face="bold"), legend.text = element_text(size = 14), legend.title = element_text(size = 14, face = "bold"), panel.grid = element_blank())
+```
+
+```{r, fig.width=20, fig.height=11}
+plot23 = plot_grid(plot21, plot22, nrow=1, ncol=2)
+plot23
 ```
 
