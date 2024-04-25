@@ -203,7 +203,11 @@ Exemple de lancement :
 
 **Lancement du Script_multiqc.sh**
 
-Une fois l'exécution du pipeline terminé, lancer le Script_multiqc.sh.
+Une fois l'exécution du pipeline terminé, lancer :
+
+```
+./Script_multiqc.sh
+```
 
 ## **Données de sortie** :
 - Fichiers BAM finaux, après l'étape BQSR : ```{path}/{sample}_aln_mem_sort_rmduplicates_apply_bqsr.bam```
