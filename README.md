@@ -203,7 +203,7 @@ Exemple de lancement :
 
 **Lancement du Script_multiqc.sh**
 
-Une fois l'exécution du pipeline terminé, lancer :
+Une fois l'exécution du pipeline terminée, lancer :
 
 ```
 ./Script_multiqc.sh
