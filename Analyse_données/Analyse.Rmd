@@ -1035,7 +1035,7 @@ vcf_annot_all = rbind(vcf_12x_annot,vcf_24x_annot,vcf_40x_annot,vcf_ref_annot)
 
 ## Annotation par VCF
 
-```{r, fig.width=11, fig.height=10}
+```{r, fig.width=12, fig.height=10}
 nombre_annot = vcf_annot_all %>% group_by(vcf, gene) %>% dplyr::count(annot)
 
 plot21 = ggplot(nombre_annot, aes(fill=vcf, y=n, x=annot)) +
@@ -1043,6 +1043,7 @@ plot21 = ggplot(nombre_annot, aes(fill=vcf, y=n, x=annot)) +
   scale_fill_manual(values = c("#de2d26", "#2c7fb8", "#2ca25f", "#E69F00")) +
   labs(fill = "VCF", x = "Types d'annotation", y = "Nombre de variants", title = "Annotation des variants par VCF") + 
   theme(plot.title = element_text(hjust = 0.5, size=18, face="bold"), axis.text.x = element_text(angle=45, vjust=1, hjust=1, size = 13, face = "bold"), axis.text.y = element_text(size = 13, face = "bold"), axis.title.x = element_text(size = 16, face="bold"), axis.title.y = element_text(size = 16, face="bold"), legend.text = element_text(size = 14), legend.title = element_text(size = 14, face = "bold"), panel.grid = element_blank())
+plot21
 ```
 
 ## Annotation par gène
@@ -1053,10 +1054,6 @@ plot22 = ggplot(nombre_annot, aes(fill=gene, y=n, x=annot)) +
   scale_fill_manual(values = c("#fdc086", "#91bfdb", "#b2df8a")) +
   labs(fill = "Nom des gènes", x = "Types d'annotation", y = "Nombre de variants", title = "Annotation des variants par gènes") + 
   theme(plot.title = element_text(hjust = 0.5, size=18, face="bold"), axis.text.x = element_text(angle=45, vjust=1, hjust=1, size = 13, face = "bold"), axis.text.y = element_text(size = 13, face = "bold"), axis.title.x = element_text(size = 16, face="bold"), axis.title.y = element_text(size = 16, face="bold"), legend.text = element_text(size = 14), legend.title = element_text(size = 14, face = "bold"), panel.grid = element_blank())
-```
-
-```{r, fig.width=20, fig.height=11}
-plot23 = plot_grid(plot21, plot22, nrow=1, ncol=2)
-plot23
+plot22
 ```
 

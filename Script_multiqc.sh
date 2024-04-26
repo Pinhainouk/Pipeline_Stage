@@ -1,6 +1,17 @@
 #!/bin/bash -i
-
-path="/home/elodie/Documents/"
+while getopts "o:s:r:n:i:f:a:v:" opt
+do
+  case "$opt" in
+    o) path=${OPTARG};;
+  esac
+  done
+  if [ -z "${path}" ]; then
+    echo "Usage: $0 -o path"
+    echo "La commande $opt nécessite une option"
+    exit 1
+  fi
+  echo "options fournies:"
+  echo "path : ${path}"
 
 ################################################################################
 # MULTIQC SUR LES RAW
@@ -30,7 +41,7 @@ fi
 
 if [ ! -d "${path}/QC_Alignment/MultiQC_Alignment" ] ;then
   echo "Le multiqc sur les stats alignement n'existe pas";
-  multiqc ${path}/QC_Alignment --module samtools --filename multiQC_Alignement --outdir ${path}/QC_Alignment/MultiQC_Alignement
+  multiqc ${path}/QC_Alignment --module samtools --filename multiQC_Alignement --outdir ${path}/QC_Alignment/MultiQC_Alignment
 else
-  echo "Le multiqc sur les fastqc existe déjà"
+  echo "Le multiqc sur les stats alignement existe déjà"
 fi
