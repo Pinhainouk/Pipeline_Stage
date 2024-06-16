@@ -1,5 +1,5 @@
 ---
-title: "Analyse des VCF en sortie du pipeline"
+title: "Analyses des VCF en sortie du pipeline"
 author: "Elodie PARIS"
 date: "2024-03-17"
 output: html_document
@@ -11,7 +11,6 @@ code_folding: hide
 
 ```{r, message=FALSE}
 rm(list=ls())
-library('DT')
 library('dplyr')
 library('tidyr')
 library('tibble')
@@ -28,7 +27,7 @@ library('gridExtra')
 library('trackViewer')
 library('VariantAnnotation')
 library('TxDb.Hsapiens.UCSC.hg19.knownGene')
-library('org.Hs.eg.db')
+#library('org.Hs.eg.db')
 library('rtracklayer')
 library('GenomicRanges')
 library('stringr')
@@ -53,8 +52,14 @@ bd_40x = read.table("/home/elodie/Documents/Alignment/gold_40x_on_data_elodie_al
 bd_ref = read.table("/home/elodie/Documents/Elodie/Datas_ismael_ref/gold_40x_on_data_elodie.bd")
 ```
 
-## Formatage des données {.tabset}
-### Formatage des VCF
+### Import des données fournies par Hap.py
+
+```{r}
+happy_12x_summury = read.table("/home/elodie/Documents/Analysis/Happy_12x/Happy_12x/ref-12x.summary.csv", header=TRUE, sep=',')
+happy_24x_summury = read.table("/home/elodie/Documents/Analysis/Happy_24x/Happy_24x/ref-24x.summary.csv", header=TRUE, sep=',')
+happy_40x_summury = read.table("/home/elodie/Documents/Analysis/Happy_40x/Happy_40x/ref-40x.summary.csv", header=TRUE, sep=',')
+```
+
 
 ```{r, include=FALSE}
 # Sélection des colonnes à analyser
@@ -105,143 +110,16 @@ formatage_dp = function(df){
 }
 ```
 
+
 ```{r, include=FALSE}
 vcf_12x_24x_40x = formatage_dp(vcf_12x_24x_40x)
-```
-
-```{r}
-datatable(vcf_all)
-```
-### Formatage des BAM
-
-```{r, include=FALSE}
-bd_12x$bam = "bam_12x"
-bd_24x$bam = "bam_24x"
-bd_40x$bam = "bam_40x"
-bd_ref$bam = "bam_ref"
-bd_all = rbind(bd_12x, bd_24x, bd_40x, bd_ref)
-names(bd_all)[1] = "chromosome"
-names(bd_all)[2] = "position_start"
-names(bd_all)[3] = "position_end"
-names(bd_all) [4] = "nombre_reads"
-bd_all$gene = ifelse(bd_all$chromosome == "chr1", "UTS2",
-                    ifelse(bd_all$chromosome == "1", "UTS2",
-                     ifelse(bd_all$chromosome == "chr4", "EPHA5",
-                           ifelse(bd_all$chromosome == "4", "EPHA5", 
-                            ifelse(bd_all$chromosome == "chr8", "LPL",
-                                    ifelse(bd_all$chromosome == "8", "LPL", NA))))))
-bd_all = na.omit(bd_all)
-```
-
-```{r}
-datatable(bd_all)
-```
-
-### Import et formatage des données Hap.py
-
-```{r, include=FALSE}
-#code récupéré sur Github Hap.py
-#fonction pour lire les CSV générés par Happy SNP (all), SNP_PASS, INDEL (all), INDEL_PASS
-read_single = function(x) {
-  nx = strsplit(x, "\\:")[[1]]
-  
-  if(length(nx) == 1) {
-    name = basename(file_path_sans_ext(x))
-  } else {
-    x = nx[1]
-    name = nx[2]
-  }
-  cat(sprintf("Reading %s as %s\n", x, name))
-#création d'une liste de dataframe
-  all_results = list()
-#Print de la liste vide
-  print(all_results)
-  all_results$roc_data_snp_all = read.csv(paste(x, "roc.Locations.SNP", "csv", "gz", sep="."))
-  all_results$roc_data_indel_all = read.csv(paste(x, "roc.Locations.INDEL", "csv", "gz", sep="."))
-  all_results$roc_data_snp_pass = read.csv(paste(x, "roc.Locations.SNP.PASS", "csv", "gz", sep="."))
-  all_results$roc_data_indel_pass = read.csv(paste(x, "roc.Locations.INDEL.PASS", "csv", "gz", sep="."))
-#Print de la liste des dataframe créée
-  print(all_results)
-#SNP
-  sel_snp_file = paste(x, "roc.Locations.SNP.SEL", "csv", "gz", sep=".")
-# if we have a selectively-filtered ROC, don't show "PASS" ROC
-  if(file.exists(sel_snp_file)) {
-    all_results$roc_data_snp_sel = read.csv(sel_snp_file)
-  } else {
-    all_results$roc_data_snp_sel = all_results$roc_data_snp_pass
-  }
-  all_results$roc_data_snp_all = head(subset(all_results$roc_data_snp_all,
-                                             QQ == min(all_results$roc_data_snp_all["QQ"])), n=1)
-  print(all_results$roc_data_snp_all)
-  all_results$roc_data_snp_pass = head(subset(all_results$roc_data_snp_pass,
-                                              QQ == min(all_results$roc_data_snp_pass["QQ"])),n=1)
-  sel_min = head(subset(all_results$roc_data_snp_sel,
-                        QQ == min(all_results$roc_data_snp_sel["QQ"])),n=1)
-  all_results$roc_connector_snp = rbind(all_results$roc_data_snp_all, sel_min)
-  all_results$roc_connector_snp$Filter = "CONN"
-  print(all_results$roc_connector_snp)
-  all_results$roc_data_snp_sel$Filter = "ROC"
-  print(all_results$roc_data_snp_sel)
-
-  #INDEL 
-  sel_indel_file = paste(x, "roc.Locations.INDEL.SEL", "csv", "gz", sep=".")
-  if(file.exists(sel_indel_file)) {
-    all_results$roc_data_indel_sel = read.csv(sel_indel_file)
-  } else {
-# use PASS ROC if no SEL ROC present
-    all_results$roc_data_indel_sel = all_results$roc_data_indel_pass
-  }
-# just keep single ALL and PASS point
-  all_results$roc_data_indel_all = head(subset(all_results$roc_data_indel_all,
-                                               QQ == min(all_results$roc_data_indel_all["QQ"])),n=1)
-  all_results$roc_data_indel_pass = head(subset(all_results$roc_data_indel_pass,
-                                                QQ == min(all_results$roc_data_indel_pass["QQ"])),n=1)
-  
-  sel_min = head(subset(all_results$roc_data_indel_sel,QQ == min(all_results$roc_data_indel_sel["QQ"])),n=1)
-  all_results$roc_connector_indel = rbind(all_results$roc_data_indel_all, sel_min)
-  all_results$roc_connector_indel$Filter = "CONN"
-  all_results$roc_data_indel_sel$Filter = "ROC"
-#Combine tous les éléments de la liste
-  result = do.call(rbind, all_results)
-  row.names(result) = NULL
-  print(class(result))
-  
-  result$filename = x
-  result$name = name
-  result$igroup = paste(result$name,result$Filter,result$Type)
-  return(result)
-}
-```
-
-```{r, include=FALSE} 
-vcf12x = read_single("/home/elodie/Documents/Analysis/Happy_12x/Happy_12x/ref-12x")
-vcf24x = read_single("/home/elodie/Documents/Analysis/Happy_24x/Happy_24x/ref-24x")
-vcf40x = read_single("/home/elodie/Documents/Analysis/Happy_40x/Happy_40x/ref-40x")
-```
-
-```{r, include=FALSE}
-vcf12x_snp = filter(vcf12x, Type=="SNP")
-vcf24x_snp = filter(vcf24x, Type=="SNP")
-vcf40x_snp = filter(vcf40x, Type=="SNP")
-vcf12x_indel = filter(vcf12x, Type=="INDEL")
-vcf24x_indel = filter(vcf24x, Type=="INDEL")
-vcf40x_indel = filter(vcf40x, Type=="INDEL")
-roc_snp = rbind(vcf12x_snp, vcf24x_snp, vcf40x_snp)
-roc_indel = rbind(vcf12x_indel, vcf24x_indel, vcf40x_indel)
-```
-
-```{r}
-datatable(roc_snp)
-```
-
-```{r}
-datatable(roc_indel)
 ```
 
 # Exploration des VCF et des variants
 
 ## Nombre et type de variants par VCF {.tabset}
 ### Nombre et type de variants 
+
 
 ```{r, include=FALSE}
 nombre_variants = tibble(data_frame(vcf_all)) %>% group_by(vcf) %>% dplyr::count(type)
@@ -474,6 +352,26 @@ plot9
 
 ## Exploration de la profondeur de lecture {.tabset}
 ### Exploration de la profondeur de lecture des BAM
+
+```{r, include=FALSE}
+bd_12x$bam = "bam_12x"
+bd_24x$bam = "bam_24x"
+bd_40x$bam = "bam_40x"
+bd_ref$bam = "bam_ref"
+bd_all = rbind(bd_12x, bd_24x, bd_40x, bd_ref)
+names(bd_all)[1] = "chromosome"
+names(bd_all)[2] = "position_start"
+names(bd_all)[3] = "position_end"
+names(bd_all) [4] = "nombre_reads"
+bd_all$gene = ifelse(bd_all$chromosome == "chr1", "UTS2",
+                    ifelse(bd_all$chromosome == "1", "UTS2",
+                     ifelse(bd_all$chromosome == "chr4", "EPHA5",
+                           ifelse(bd_all$chromosome == "4", "EPHA5", 
+                            ifelse(bd_all$chromosome == "chr8", "LPL",
+                                    ifelse(bd_all$chromosome == "8", "LPL", NA))))))
+bd_all = na.omit(bd_all)
+```
+
 
 ```{r, fig.height=6}
 plot9 = ggplot(bd_all, aes(x = nombre_reads, y = gene, fill = bam)) + geom_boxplot() + theme_classic() + 
@@ -735,6 +633,86 @@ Plus le score F1 est élevé, plus le modèle est performant.
 ## Courbes Precision/Recall
 
 ```{r, include=FALSE}
+#code récupéré sur Github Hap.py
+#fonction pour lire les CSV générés par Happy SNP (all), SNP_PASS, INDEL (all), INDEL_PASS
+read_single = function(x) {
+  nx = strsplit(x, "\\:")[[1]]
+  
+  if(length(nx) == 1) {
+    name = basename(file_path_sans_ext(x))
+  } else {
+    x = nx[1]
+    name = nx[2]
+  }
+  cat(sprintf("Reading %s as %s\n", x, name))
+#création d'une liste de dataframe
+  all_results = list()
+#Print de la liste vide
+  print(all_results)
+  all_results$roc_data_snp_all = read.csv(paste(x, "roc.Locations.SNP", "csv", "gz", sep="."))
+  all_results$roc_data_indel_all = read.csv(paste(x, "roc.Locations.INDEL", "csv", "gz", sep="."))
+  all_results$roc_data_snp_pass = read.csv(paste(x, "roc.Locations.SNP.PASS", "csv", "gz", sep="."))
+  all_results$roc_data_indel_pass = read.csv(paste(x, "roc.Locations.INDEL.PASS", "csv", "gz", sep="."))
+#Print de la liste des dataframe créée
+  print(all_results)
+#SNP
+  sel_snp_file = paste(x, "roc.Locations.SNP.SEL", "csv", "gz", sep=".")
+# if we have a selectively-filtered ROC, don't show "PASS" ROC
+  if(file.exists(sel_snp_file)) {
+    all_results$roc_data_snp_sel = read.csv(sel_snp_file)
+  } else {
+    all_results$roc_data_snp_sel = all_results$roc_data_snp_pass
+  }
+  all_results$roc_data_snp_all = head(subset(all_results$roc_data_snp_all,
+                                             QQ == min(all_results$roc_data_snp_all["QQ"])), n=1)
+  print(all_results$roc_data_snp_all)
+  all_results$roc_data_snp_pass = head(subset(all_results$roc_data_snp_pass,
+                                              QQ == min(all_results$roc_data_snp_pass["QQ"])),n=1)
+  sel_min = head(subset(all_results$roc_data_snp_sel,
+                        QQ == min(all_results$roc_data_snp_sel["QQ"])),n=1)
+  all_results$roc_connector_snp = rbind(all_results$roc_data_snp_all, sel_min)
+  all_results$roc_connector_snp$Filter = "CONN"
+  print(all_results$roc_connector_snp)
+  all_results$roc_data_snp_sel$Filter = "ROC"
+  print(all_results$roc_data_snp_sel)
+
+  #INDEL 
+  sel_indel_file = paste(x, "roc.Locations.INDEL.SEL", "csv", "gz", sep=".")
+  if(file.exists(sel_indel_file)) {
+    all_results$roc_data_indel_sel = read.csv(sel_indel_file)
+  } else {
+# use PASS ROC if no SEL ROC present
+    all_results$roc_data_indel_sel = all_results$roc_data_indel_pass
+  }
+# just keep single ALL and PASS point
+  all_results$roc_data_indel_all = head(subset(all_results$roc_data_indel_all,
+                                               QQ == min(all_results$roc_data_indel_all["QQ"])),n=1)
+  all_results$roc_data_indel_pass = head(subset(all_results$roc_data_indel_pass,
+                                                QQ == min(all_results$roc_data_indel_pass["QQ"])),n=1)
+  
+  sel_min = head(subset(all_results$roc_data_indel_sel,QQ == min(all_results$roc_data_indel_sel["QQ"])),n=1)
+  all_results$roc_connector_indel = rbind(all_results$roc_data_indel_all, sel_min)
+  all_results$roc_connector_indel$Filter = "CONN"
+  all_results$roc_data_indel_sel$Filter = "ROC"
+#Combine tous les éléments de la liste
+  result = do.call(rbind, all_results)
+  row.names(result) = NULL
+  print(class(result))
+  
+  result$filename = x
+  result$name = name
+  result$igroup = paste(result$name,result$Filter,result$Type)
+  return(result)
+}
+```
+
+```{r, include=FALSE} 
+vcf12x = read_single("/home/elodie/Documents/Analysis/Happy_12x/Happy_12x/ref-12x")
+vcf24x = read_single("/home/elodie/Documents/Analysis/Happy_24x/Happy_24x/ref-24x")
+vcf40x = read_single("/home/elodie/Documents/Analysis/Happy_40x/Happy_40x/ref-40x")
+```
+
+```{r, include=FALSE}
 plot_data = function(pdata, is.PR=FALSE) {
   # precision / recall curve
   if(is.PR) {
@@ -798,6 +776,17 @@ plot_data = function(pdata, is.PR=FALSE) {
   
   return(plt)
 }
+```
+
+```{r, include=FALSE}
+vcf12x_snp = filter(vcf12x, Type=="SNP")
+vcf24x_snp = filter(vcf24x, Type=="SNP")
+vcf40x_snp = filter(vcf40x, Type=="SNP")
+vcf12x_indel = filter(vcf12x, Type=="INDEL")
+vcf24x_indel = filter(vcf24x, Type=="INDEL")
+vcf40x_indel = filter(vcf40x, Type=="INDEL")
+roc_snp = rbind(vcf12x_snp, vcf24x_snp, vcf40x_snp)
+roc_indel = rbind(vcf12x_indel, vcf24x_indel, vcf40x_indel)
 ```
 
 ```{r, fig.width=10, fig.height=10, message=FALSE}
@@ -867,6 +856,20 @@ gr_LPL = GRanges("chr8", IRanges(c(19796764, 19805691, 19809280, 19810821, 19811
                                  width=c(19797039-19796763, 19805851-19805690, 19809459-19809279, 19810932-19810820, 19811864-19811630, 19813594-19813351, 19816891-19816770, 19818594-19818411, 19819730-19819625, 19824770-19822820),
                                  names=c(paste0("exon", 1:10)), fill = c("#91bfdb", "#91bfdb", "#91bfdb", "#91bfdb", "#91bfdb", "#91bfdb", "#91bfdb", "#91bfdb", "#91bfdb", "#91bfdb"), 
                                  height = c(0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04)))
+
+gold_12x_EPHA5_diff = "/home/elodie/Documents/Analysis/VCF_lolliplot/gold_12x_on_data_elodie_filtervarianttranches_2D_decomposed_normalized_uniq_EPHA5_diff.vcf.gz"
+gold_24x_EPHA5_diff = "/home/elodie/Documents/Analysis/VCF_lolliplot/gold_24x_on_data_elodie_filtervarianttranches_2D_decomposed_normalized_uniq_EPHA5_diff.vcf.gz"
+gold_40x_EPHA5_diff = "/home/elodie/Documents/Analysis/VCF_lolliplot/gold_40x_on_data_elodie_filtervarianttranches_2D_decomposed_normalized_uniq_EPHA5_diff.vcf.gz"
+gold_ref_EPHA5_diff = "/home/elodie/Documents/Elodie/Datas_ismael_ref/gold_on_data_elodie_ismael_decomposed_normalize_uniq_chr_EPHA5_diff.vcf.gz"
+
+gr_EPHA5_ex18_1 = GRanges("chr4", IRanges(c(66509081, 66535155, 66361106, 66467359, 66286159, 66356095, 66270092, 66280002, 66218760, 66230735, 66231650, 66233075, 66242716, 66185285, 66197691, 66201650, 66213772, 66217107),
+                                         width=c(66509145-66509080, 66535207-66535154, 66361261-66361105, 66468022-66467358, 66286283-66286158, 66356430-66356094,
+                                                 66270197-66270091, 66280161-66280001, 66218821-66218759, 66230920-66230734, 66231775-66231649, 66233142-66233074, 66242781-66242715, 66189937-66185284, 66197846-66197690, 66201843-66201649, 66213921-66213771, 66217316-66217106),
+                                         names=c(paste0("exon", 18:1)), 
+                                         fill=c("#fdc086", "#fdc086", "#fdc086", "#fdc086", "#fdc086", "#fdc086", "#fdc086", "#fdc086", "#fdc086", "#fdc086", "#fdc086", "#fdc086", "#fdc086", "#fdc086", "#fdc086", "#fdc086", "#fdc086", "#fdc086"), 
+                                         height=c(0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04)))
+
+
 ```
 
 ```{r, include=FALSE}
@@ -986,6 +989,13 @@ plot_EPHA5_ex14_18 = create_lolliplots(gold_12x_EPHA5, gold_24x_EPHA5, gold_40x_
 plot_EPHA5_ex14_18
 ```
 
+## Gène EPHA5 (non communs)
+
+```{r, fig.width=20}
+plot_EPHA5_ex1_18 = create_lolliplots(gold_12x_EPHA5_diff, gold_24x_EPHA5_diff, gold_40x_EPHA5_diff, gold_ref_EPHA5_diff, gr_EPHA5_ex18_1)
+plot_EPHA5_ex1_18
+```
+
 ## Gène LPL
 
 ```{r, message=FALSE}
@@ -1035,7 +1045,7 @@ vcf_annot_all = rbind(vcf_12x_annot,vcf_24x_annot,vcf_40x_annot,vcf_ref_annot)
 
 ## Annotation par VCF
 
-```{r, fig.width=12, fig.height=10}
+```{r, fig.width=11, fig.height=10}
 nombre_annot = vcf_annot_all %>% group_by(vcf, gene) %>% dplyr::count(annot)
 
 plot21 = ggplot(nombre_annot, aes(fill=vcf, y=n, x=annot)) +
@@ -1043,7 +1053,6 @@ plot21 = ggplot(nombre_annot, aes(fill=vcf, y=n, x=annot)) +
   scale_fill_manual(values = c("#de2d26", "#2c7fb8", "#2ca25f", "#E69F00")) +
   labs(fill = "VCF", x = "Types d'annotation", y = "Nombre de variants", title = "Annotation des variants par VCF") + 
   theme(plot.title = element_text(hjust = 0.5, size=18, face="bold"), axis.text.x = element_text(angle=45, vjust=1, hjust=1, size = 13, face = "bold"), axis.text.y = element_text(size = 13, face = "bold"), axis.title.x = element_text(size = 16, face="bold"), axis.title.y = element_text(size = 16, face="bold"), legend.text = element_text(size = 14), legend.title = element_text(size = 14, face = "bold"), panel.grid = element_blank())
-plot21
 ```
 
 ## Annotation par gène
@@ -1054,6 +1063,10 @@ plot22 = ggplot(nombre_annot, aes(fill=gene, y=n, x=annot)) +
   scale_fill_manual(values = c("#fdc086", "#91bfdb", "#b2df8a")) +
   labs(fill = "Nom des gènes", x = "Types d'annotation", y = "Nombre de variants", title = "Annotation des variants par gènes") + 
   theme(plot.title = element_text(hjust = 0.5, size=18, face="bold"), axis.text.x = element_text(angle=45, vjust=1, hjust=1, size = 13, face = "bold"), axis.text.y = element_text(size = 13, face = "bold"), axis.title.x = element_text(size = 16, face="bold"), axis.title.y = element_text(size = 16, face="bold"), legend.text = element_text(size = 14), legend.title = element_text(size = 14, face = "bold"), panel.grid = element_blank())
-plot22
+```
+
+```{r, fig.width=20, fig.height=11}
+plot23 = plot_grid(plot21, plot22, nrow=1, ncol=2)
+plot23
 ```
 
