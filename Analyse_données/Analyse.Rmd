@@ -11,6 +11,7 @@ code_folding: hide
 
 ```{r, message=FALSE}
 rm(list=ls())
+library('DT')
 library('dplyr')
 library('tidyr')
 library('tibble')
@@ -27,7 +28,6 @@ library('gridExtra')
 library('trackViewer')
 library('VariantAnnotation')
 library('TxDb.Hsapiens.UCSC.hg19.knownGene')
-#library('org.Hs.eg.db')
 library('rtracklayer')
 library('GenomicRanges')
 library('stringr')
@@ -60,6 +60,8 @@ happy_24x_summury = read.table("/home/elodie/Documents/Analysis/Happy_24x/Happy_
 happy_40x_summury = read.table("/home/elodie/Documents/Analysis/Happy_40x/Happy_40x/ref-40x.summary.csv", header=TRUE, sep=',')
 ```
 
+## Formatage des données {.tabset}
+### Formatage des VCF
 
 ```{r, include=FALSE}
 # Sélection des colonnes à analyser
@@ -110,9 +112,138 @@ formatage_dp = function(df){
 }
 ```
 
-
 ```{r, include=FALSE}
 vcf_12x_24x_40x = formatage_dp(vcf_12x_24x_40x)
+```
+
+```{r}
+datatable(vcf_all)
+```
+
+### Formatage des BAM
+
+```{r, include=FALSE}
+bd_12x$bam = "bam_12x"
+bd_24x$bam = "bam_24x"
+bd_40x$bam = "bam_40x"
+bd_ref$bam = "bam_ref"
+bd_all = rbind(bd_12x, bd_24x, bd_40x, bd_ref)
+names(bd_all)[1] = "chromosome"
+names(bd_all)[2] = "position_start"
+names(bd_all)[3] = "position_end"
+names(bd_all) [4] = "nombre_reads"
+bd_all$gene = ifelse(bd_all$chromosome == "chr1", "UTS2",
+                    ifelse(bd_all$chromosome == "1", "UTS2",
+                     ifelse(bd_all$chromosome == "chr4", "EPHA5",
+                           ifelse(bd_all$chromosome == "4", "EPHA5", 
+                            ifelse(bd_all$chromosome == "chr8", "LPL",
+                                    ifelse(bd_all$chromosome == "8", "LPL", NA))))))
+bd_all = na.omit(bd_all)
+```
+
+```{r}
+datatable(bd_all)
+```
+
+### Import et formatage des données Hap.py
+
+```{r, include=FALSE}
+#code récupéré sur Github Hap.py
+#fonction pour lire les CSV générés par Happy SNP (all), SNP_PASS, INDEL (all), INDEL_PASS
+read_single = function(x) {
+  nx = strsplit(x, "\\:")[[1]]
+  
+  if(length(nx) == 1) {
+    name = basename(file_path_sans_ext(x))
+  } else {
+    x = nx[1]
+    name = nx[2]
+  }
+  cat(sprintf("Reading %s as %s\n", x, name))
+#création d'une liste de dataframe
+  all_results = list()
+#Print de la liste vide
+  print(all_results)
+  all_results$roc_data_snp_all = read.csv(paste(x, "roc.Locations.SNP", "csv", "gz", sep="."))
+  all_results$roc_data_indel_all = read.csv(paste(x, "roc.Locations.INDEL", "csv", "gz", sep="."))
+  all_results$roc_data_snp_pass = read.csv(paste(x, "roc.Locations.SNP.PASS", "csv", "gz", sep="."))
+  all_results$roc_data_indel_pass = read.csv(paste(x, "roc.Locations.INDEL.PASS", "csv", "gz", sep="."))
+#Print de la liste des dataframe créée
+  print(all_results)
+#SNP
+  sel_snp_file = paste(x, "roc.Locations.SNP.SEL", "csv", "gz", sep=".")
+# if we have a selectively-filtered ROC, don't show "PASS" ROC
+  if(file.exists(sel_snp_file)) {
+    all_results$roc_data_snp_sel = read.csv(sel_snp_file)
+  } else {
+    all_results$roc_data_snp_sel = all_results$roc_data_snp_pass
+  }
+  all_results$roc_data_snp_all = head(subset(all_results$roc_data_snp_all,
+                                             QQ == min(all_results$roc_data_snp_all["QQ"])), n=1)
+  print(all_results$roc_data_snp_all)
+  all_results$roc_data_snp_pass = head(subset(all_results$roc_data_snp_pass,
+                                              QQ == min(all_results$roc_data_snp_pass["QQ"])),n=1)
+  sel_min = head(subset(all_results$roc_data_snp_sel,
+                        QQ == min(all_results$roc_data_snp_sel["QQ"])),n=1)
+  all_results$roc_connector_snp = rbind(all_results$roc_data_snp_all, sel_min)
+  all_results$roc_connector_snp$Filter = "CONN"
+  print(all_results$roc_connector_snp)
+  all_results$roc_data_snp_sel$Filter = "ROC"
+  print(all_results$roc_data_snp_sel)
+
+  #INDEL 
+  sel_indel_file = paste(x, "roc.Locations.INDEL.SEL", "csv", "gz", sep=".")
+  if(file.exists(sel_indel_file)) {
+    all_results$roc_data_indel_sel = read.csv(sel_indel_file)
+  } else {
+# use PASS ROC if no SEL ROC present
+    all_results$roc_data_indel_sel = all_results$roc_data_indel_pass
+  }
+# just keep single ALL and PASS point
+  all_results$roc_data_indel_all = head(subset(all_results$roc_data_indel_all,
+                                               QQ == min(all_results$roc_data_indel_all["QQ"])),n=1)
+  all_results$roc_data_indel_pass = head(subset(all_results$roc_data_indel_pass,
+                                                QQ == min(all_results$roc_data_indel_pass["QQ"])),n=1)
+  
+  sel_min = head(subset(all_results$roc_data_indel_sel,QQ == min(all_results$roc_data_indel_sel["QQ"])),n=1)
+  all_results$roc_connector_indel = rbind(all_results$roc_data_indel_all, sel_min)
+  all_results$roc_connector_indel$Filter = "CONN"
+  all_results$roc_data_indel_sel$Filter = "ROC"
+#Combine tous les éléments de la liste
+  result = do.call(rbind, all_results)
+  row.names(result) = NULL
+  print(class(result))
+  
+  result$filename = x
+  result$name = name
+  result$igroup = paste(result$name,result$Filter,result$Type)
+  return(result)
+}
+```
+
+```{r, include=FALSE} 
+vcf12x = read_single("/home/elodie/Documents/Analysis/Happy_12x/Happy_12x/ref-12x")
+vcf24x = read_single("/home/elodie/Documents/Analysis/Happy_24x/Happy_24x/ref-24x")
+vcf40x = read_single("/home/elodie/Documents/Analysis/Happy_40x/Happy_40x/ref-40x")
+```
+
+```{r, include=FALSE}
+vcf12x_snp = filter(vcf12x, Type=="SNP")
+vcf24x_snp = filter(vcf24x, Type=="SNP")
+vcf40x_snp = filter(vcf40x, Type=="SNP")
+vcf12x_indel = filter(vcf12x, Type=="INDEL")
+vcf24x_indel = filter(vcf24x, Type=="INDEL")
+vcf40x_indel = filter(vcf40x, Type=="INDEL")
+roc_snp = rbind(vcf12x_snp, vcf24x_snp, vcf40x_snp)
+roc_indel = rbind(vcf12x_indel, vcf24x_indel, vcf40x_indel)
+```
+
+```{r}
+datatable(roc_snp)
+```
+
+```{r}
+datatable(roc_indel)
 ```
 
 # Exploration des VCF et des variants
